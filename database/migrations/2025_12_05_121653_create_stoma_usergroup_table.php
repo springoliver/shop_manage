@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stoma_usergroup', function (Blueprint $table) {
-            $table->increments('usergroupid');
+            $table->unsignedBigInteger('usergroupid')->primary();
             $table->string('groupname', 255);
             $table->enum('level_access', ['Admin', 'View']);
             $table->enum('status', ['Enable', 'Disable'])->default('Enable');

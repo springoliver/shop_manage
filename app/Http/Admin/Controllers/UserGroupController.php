@@ -96,6 +96,7 @@ class UserGroupController extends Controller
     public function destroy(UserGroup $userGroup): RedirectResponse
     {
         // Check if user group is assigned to any employees
+       
         // $employeeCount = DB::table('employee')
         //     ->where('usergroupid', $userGroup->usergroupid)
         //     ->count();

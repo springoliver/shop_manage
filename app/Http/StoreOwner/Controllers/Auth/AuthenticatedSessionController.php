@@ -28,6 +28,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Update last login tracking
+        $storeOwner = Auth::guard('storeowner')->user();
+        if ($storeOwner) {
+            $storeOwner->update([
+                'lastlogindate' => now(),
+                'lastloginip' => $request->ip(),
+            ]);
+        }
+
         return redirect()->intended(route('storeowner.dashboard', absolute: false));
     }
 

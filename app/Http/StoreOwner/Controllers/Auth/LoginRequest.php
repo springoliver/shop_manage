@@ -41,13 +41,64 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::guard('storeowner')->attempt($this->only('emailid', 'password'), $this->boolean('remember'))) {
+        $credentials = $this->only('emailid', 'password');
+        
+        // Manually authenticate to check status
+        $storeOwner = \App\Models\StoreOwner::where('emailid', $credentials['emailid'])->first();
+        
+        if (!$storeOwner) {
             RateLimiter::hit($this->throttleKey());
-
             throw ValidationException::withMessages([
                 'emailid' => trans('auth.failed'),
             ]);
         }
+
+        // Check password - support both Laravel Hash and base64 (for backward compatibility with CI)
+        $passwordValid = false;
+        if (\Illuminate\Support\Facades\Hash::check($credentials['password'], $storeOwner->password)) {
+            $passwordValid = true;
+        } elseif (base64_encode($credentials['password']) === $storeOwner->password) {
+            // Backward compatibility: if password matches base64, rehash it with Laravel Hash
+            // Use setRawAttributes to bypass the 'hashed' cast, then save
+            $storeOwner->setRawAttributes(array_merge($storeOwner->getAttributes(), [
+                'password' => \Illuminate\Support\Facades\Hash::make($credentials['password'])
+            ]));
+            $storeOwner->save();
+            $passwordValid = true;
+        }
+
+        if (!$passwordValid) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'emailid' => trans('auth.failed'),
+            ]);
+        }
+
+        // Check owner status
+        if ($storeOwner->status !== 'Active') {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'emailid' => 'You have not activated your account yet. Please activate your account to login.',
+            ]);
+        }
+
+        // Check store status - owner must have at least one active store
+        $activeStore = \App\Models\Store::where('storeownerid', $storeOwner->ownerid)
+            ->where('status', 'Active')
+            ->first();
+
+        if (!$activeStore) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'emailid' => 'Your store is not verified. Please contact admin.',
+            ]);
+        }
+
+        // Login the user
+        Auth::guard('storeowner')->login($storeOwner, $this->boolean('remember'));
+        
+        // Store storeid in session
+        session(['storeid' => $activeStore->storeid]);
 
         RateLimiter::clear($this->throttleKey());
     }

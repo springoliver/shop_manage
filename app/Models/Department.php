@@ -15,7 +15,7 @@ class Department extends Model
      *
      * @var string
      */
-    protected $table = 'stoma_department';
+    protected $table = 'stoma_store_department';
 
     /**
      * The primary key associated with the table.
@@ -41,6 +41,15 @@ class Department extends Model
         'storetypeid',
         'storeid',
         'roster_max_time',
+        'day_max_time',
+        'target_hours',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
         'status',
     ];
 

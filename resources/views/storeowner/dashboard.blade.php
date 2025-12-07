@@ -1,75 +1,49 @@
+@section('page_header', 'Dashboard')
+
 <x-storeowner-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Store Owner Dashboard') }}
-        </h2>
-    </x-slot>
-
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-semibold mb-4">Welcome, {{ Auth::guard('storeowner')->user()->firstname }} {{ Auth::guard('storeowner')->user()->lastname }}!</h3>
-
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-600">
-                            Username: <span class="font-semibold text-blue-600">{{ Auth::guard('storeowner')->user()->username }}</span>
-                        </p>
-                        <p class="text-sm text-gray-600">
-                            Email: <span class="font-semibold text-blue-600">{{ Auth::guard('storeowner')->user()->emailid }}</span>
-                        </p>
+    <!-- Breadcrumb -->
+    <div class="mb-6">
+        <nav class="flex text-gray-500 text-sm" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('storeowner.dashboard') }}" class="inline-flex items-center hover:text-gray-700">
+                        <i class="fas fa-home mr-2"></i>
+                        Home
+                    </a>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                        <span class="ml-1 font-medium text-gray-700 md:ml-2">Dashboard</span>
                     </div>
+                </li>
+            </ol>
+        </nav>
+    </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- Store Management -->
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <h4 class="font-semibold text-blue-800 mb-2">Store Management</h4>
-                            <p class="text-sm text-blue-600">Manage your store settings and information</p>
-                            <ul class="text-sm text-blue-600 mt-2 list-disc list-inside">
-                                <li>Update store details</li>
-                                <li>Manage products</li>
-                                <li>View orders</li>
-                                <li>Track inventory</li>
-                            </ul>
-                        </div>
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800">Dashboard</h1>
+    </div>
 
-                        <!-- Financial Overview -->
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <h4 class="font-semibold text-green-800 mb-2">Financial Overview</h4>
-                            <p class="text-sm text-green-600">Track your revenue and expenses</p>
-                            <ul class="text-sm text-green-600 mt-2 list-disc list-inside">
-                                <li>Sales reports</li>
-                                <li>Revenue analytics</li>
-                                <li>Payment history</li>
-                                <li>Financial statements</li>
-                            </ul>
-                        </div>
+    <!-- Welcome Message -->
+    <div class="mb-6">
+        <p class="text-gray-600">
+            Welcome, <span class="font-semibold text-gray-800">{{ Auth::guard('storeowner')->user()->firstname }} {{ Auth::guard('storeowner')->user()->lastname }}</span>!
+        </p>
+        <p class="text-sm text-gray-500 mt-1">
+            Username: {{ Auth::guard('storeowner')->user()->username }} | Email: {{ Auth::guard('storeowner')->user()->emailid }}
+        </p>
+    </div>
 
-                        <!-- Customer Management -->
-                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                            <h4 class="font-semibold text-purple-800 mb-2">Customer Management</h4>
-                            <p class="text-sm text-purple-600">Manage your customer base</p>
-                            <ul class="text-sm text-purple-600 mt-2 list-disc list-inside">
-                                <li>Customer database</li>
-                                <li>Order history</li>
-                                <li>Customer feedback</li>
-                                <li>Loyalty programs</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Quick Actions -->
-                    <div class="mt-6">
-                        <h4 class="font-semibold mb-3">Quick Actions</h4>
-                        <div class="flex flex-wrap gap-2">
-                            <a href="#" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Manage Store</a>
-                            <a href="#" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">View Reports</a>
-                            <a href="#" class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">Customer List</a>
-                            <a href="{{ route('storeowner.profile.edit') }}" class="bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700">Edit Profile</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Quick Actions -->
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('storeowner.store.index') }}" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">My Stores</a>
+            <a href="{{ route('storeowner.usergroup.index') }}" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">User Groups</a>
+            <a href="{{ route('storeowner.department.index') }}" class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">Departments</a>
+            <a href="{{ route('storeowner.profile.edit') }}" class="bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700">Edit Profile</a>
         </div>
     </div>
 </x-storeowner-app-layout>

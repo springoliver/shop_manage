@@ -1,8 +1,21 @@
 <x-guest-layout>
     <div class="w-full max-w-md bg-white/95 rounded-lg shadow-lg p-8">
         <h2 class="text-center mb-6 font-medium text-lg">Store Owner Login</h2>
+        
         <!-- Session Status -->
         <x-auth-session-status class="mb-4" :status="session('status')" />
+
+        @if (session('success'))
+            <div class="mb-4 px-4 py-3 bg-green-100 border border-green-400 text-green-700 rounded relative" role="alert">
+                <span class="block sm:inline">{{ session('success') }}</span>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="mb-4 px-4 py-3 bg-red-100 border border-red-400 text-red-700 rounded relative" role="alert">
+                <span class="block sm:inline">{{ session('error') }}</span>
+            </div>
+        @endif
 
         <form method="POST" action="{{ route('storeowner.login') }}">
             @csrf
@@ -30,16 +43,25 @@
                 </label>
             </div>
 
-            <div class="flex items-center justify-end mt-4">
-                @if (Route::has('storeowner.password.request'))
-                    <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('storeowner.password.request') }}">
-                        {{ __('Forgot your password?') }}
-                    </a>
-                @endif
+            <div class="flex items-center justify-between mt-4">
+                <div>
+                    @if (Route::has('storeowner.register'))
+                        <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('storeowner.register') }}">
+                            {{ __('Register') }}
+                        </a>
+                    @endif
+                </div>
+                <div class="flex items-center space-x-4">
+                    @if (Route::has('storeowner.password.request'))
+                        <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('storeowner.password.request') }}">
+                            {{ __('Forgot your password?') }}
+                        </a>
+                    @endif
 
-                <x-primary-button class="ms-3">
-                    {{ __('Log in') }}
-                </x-primary-button>
+                    <x-primary-button>
+                        {{ __('Log in') }}
+                    </x-primary-button>
+                </div>
             </div>
         </form>
     </div>

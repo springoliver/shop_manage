@@ -140,5 +140,22 @@ class StoreOwner extends Authenticatable implements MustVerifyEmail
     {
         return $this->emailid;
     }
+
+    /**
+     * Get the stores owned by this store owner.
+     */
+    public function stores(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Store::class, 'storeownerid', 'ownerid');
+    }
+
+    /**
+     * Get the active stores owned by this store owner.
+     */
+    public function activeStores(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Store::class, 'storeownerid', 'ownerid')
+            ->where('status', 'Active');
+    }
 }
 
