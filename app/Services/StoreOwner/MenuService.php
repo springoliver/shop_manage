@@ -123,7 +123,7 @@ class MenuService
                     'label' => 'Clock in-out',
                     'route' => 'storeowner.clocktime.index',
                     'enabled' => true,
-                    'icon' => '<i class="fa fa-clock-o"></i>',
+                    'icon' => '<i class="fa fa-clock"></i>',
                     'type' => 'link',
                 ];
             }
@@ -134,7 +134,7 @@ class MenuService
                     'label' => 'Employee Holidays',
                     'route' => 'storeowner.clocktime.employee_holidays',
                     'enabled' => true,
-                    'icon' => '<i class="fa fa-clock-o"></i>',
+                    'icon' => '<i class="fa fa-clock"></i>',
                     'type' => 'link',
                 ];
             }
@@ -146,7 +146,7 @@ class MenuService
                 'label' => 'Employee Documents',
                 'route' => 'storeowner.document.index',
                 'enabled' => true,
-                'icon' => '<i class="fa fa-file-o"></i>',
+                'icon' => '<i class="fa fa-file"></i>',
                 'type' => 'link',
             ];
         }
@@ -173,13 +173,13 @@ class MenuService
             ];
         }
         
-        // Employee Reviews
-        if (in_array('Employee Reviews', $installedModuleNames) && Route::has('storeowner.employeereviews.index')) {
+        // Employee Reviews - show if route exists (controller handles module check)
+        if (Route::has('storeowner.employeereviews.index')) {
             $submenu[] = [
                 'label' => 'Employee Reviews',
                 'route' => 'storeowner.employeereviews.index',
                 'enabled' => true,
-                'icon' => '<i class="fa fa-user"></i>',
+                'icon' => '<i class="fa fa-file-text"></i>',
                 'type' => 'link',
             ];
         }

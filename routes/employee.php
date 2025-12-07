@@ -13,7 +13,7 @@ use App\Http\Employee\Controllers\Auth\VerifyEmailController as EmployeeVerifyEm
 use Illuminate\Support\Facades\Route;
 
 // Employee Routes
-Route::prefix('employee')->name('employee.')->group(function () {
+Route::prefix('employees')->name('employee.')->group(function () {
     // Employee Guest Routes
     Route::middleware('guest.employee')->group(function () {
         Route::get('register', [EmployeeRegisteredUserController::class, 'create'])

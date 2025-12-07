@@ -1,0 +1,216 @@
+@section('page_header', 'Clock-In-Out')
+
+<x-storeowner-app-layout>
+    <!-- Breadcrumb -->
+    <div class="mb-6">
+        <nav class="flex text-gray-500 text-sm" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('storeowner.dashboard') }}" class="inline-flex items-center hover:text-gray-700">
+                        <i class="fas fa-home mr-2"></i>
+                        Home
+                    </a>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                        <span class="ml-1 font-medium text-gray-700 md:ml-2">Clock-in-out</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Success/Error Messages -->
+    @if (session('success'))
+        <div class="mb-4 px-4 py-3 bg-green-100 border border-green-400 text-green-700 rounded relative" role="alert">
+            <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">&times;</button>
+            <span class="block sm:inline">{{ session('success') }}</span>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="mb-4 px-4 py-3 bg-red-100 border border-red-400 text-red-700 rounded relative" role="alert">
+            <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">&times;</button>
+            <span class="block sm:inline">{{ session('error') }}</span>
+        </div>
+    @endif
+
+    <!-- Search Form -->
+    <div class="mb-6 bg-white rounded-lg shadow p-6">
+        <form action="{{ route('storeowner.clocktime.clockreport') }}" method="POST" class="flex flex-wrap items-end gap-4">
+            @csrf
+            <div class="block text-sm font-medium text-gray-700 mb-2">Select Date:</div>
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" name="date" id="date" value="{{ $searchDate ?? '' }}" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
+                       placeholder="dd-mm-yyyy" required>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" name="date_end" id="date_end" value="{{ $searchDateEnd ?? '' }}" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
+                       placeholder="dd-mm-yyyy" required>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <select id="employeeid" name="employeeid[]" multiple class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    @foreach($employees as $employee)
+                        <option value="{{ $employee->employeeid }}" 
+                                {{ (isset($employeeids) && in_array($employee->employeeid, $employeeids)) ? 'selected' : '' }}>
+                            {{ $employee->firstname }} {{ $employee->lastname }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    Search
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Export PDF Form -->
+    <div class="mb-6 bg-white rounded-lg shadow p-6">
+        <form action="{{ route('storeowner.clocktime.exportpdf') }}" method="POST" class="flex flex-wrap items-end gap-4">
+            @csrf
+            <div class="block text-sm font-medium text-gray-700 mb-2">Select Date:</div>
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" name="date" id="date2" value="{{ $searchDate ?? '' }}" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
+                       placeholder="dd-mm-yyyy" required>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" name="date_end" id="date_end2" value="{{ $searchDateEnd ?? '' }}" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
+                       placeholder="dd-mm-yyyy" required>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <select id="employeeid2" name="employeeid[]" multiple class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    @foreach($employees as $employee)
+                        <option value="{{ $employee->employeeid }}">
+                            {{ $employee->firstname }} {{ $employee->lastname }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    Export PDF
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start(Roster)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finish(Roster)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start(Clock in-out App)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finish(Clock in-out App)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Roster Hrs</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Clock in-out App Hrs</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @forelse($clockDetails ?? [] as $detail)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="#" class="text-blue-600 hover:text-blue-800">
+                                        {{ ucfirst($detail->employee->firstname ?? '') }} {{ ucfirst($detail->employee->lastname ?? '') }}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $detail->week->weeknumber ?? '' }}-{{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y') : '' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('d-m-Y') : '' }}
+                                    <br/>
+                                    ({{ $detail->day }})
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $detail->roster_start_time ?? '00:00' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $detail->roster_end_time ?? '00:00' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d H:i') : '' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    @if($detail->status == 'clockout')
+                                        Still Working...
+                                    @else
+                                        {{ $detail->clockout ? \Carbon\Carbon::parse($detail->clockout)->format('Y-m-d H:i') : '' }}
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    @php
+                                        $rosterStart = \Carbon\Carbon::parse($detail->roster_start_time ?? '00:00');
+                                        $rosterEnd = \Carbon\Carbon::parse($detail->roster_end_time ?? '00:00');
+                                        $totalRosterMinutes = $rosterEnd->diffInMinutes($rosterStart);
+                                        $hours = floor($totalRosterMinutes / 60);
+                                        $minutes = $totalRosterMinutes % 60;
+                                    @endphp
+                                    {{ $hours }} Hour {{ $minutes }} Minute
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    @if($detail->status != 'clockout' && isset($detail->timediff))
+                                        @php
+                                            $clockHours = floor($detail->timediff / 60);
+                                            $clockMinutes = $detail->timediff % 60;
+                                        @endphp
+                                        {{ $clockHours }} hours {{ $clockMinutes }} minutes
+                                    @else
+                                        ---
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="9" class="px-6 py-4 text-center text-gray-500">No clock in-out records found</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @push('scripts')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        // Date pickers
+        flatpickr('#date, #date2', {
+            dateFormat: 'd-m-Y',
+            maxDate: 'today'
+        });
+        
+        flatpickr('#date_end, #date_end2', {
+            dateFormat: 'd-m-Y',
+            maxDate: 'today'
+        });
+
+        // Select2 for employee dropdowns
+        $(document).ready(function() {
+            $('#employeeid, #employeeid2').select2({
+                placeholder: 'All Employees',
+                allowClear: true,
+                width: '100%',
+                closeOnSelect: false
+            });
+        });
+    </script>
+    @endpush
+</x-storeowner-app-layout>
+
