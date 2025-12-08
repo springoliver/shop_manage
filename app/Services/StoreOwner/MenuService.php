@@ -203,18 +203,37 @@ class MenuService
      */
     protected function buildPointOfSaleMenu(array $installedModuleNames): ?array
     {
-        if (!in_array('Point Of Sale', $installedModuleNames)) {
+        // Check for exact match or case-insensitive match
+        $posModuleInstalled = false;
+        foreach ($installedModuleNames as $moduleName) {
+            if (strcasecmp($moduleName, 'Point Of Sale') === 0 || 
+                strcasecmp($moduleName, 'POS') === 0) {
+                $posModuleInstalled = true;
+                break;
+            }
+        }
+        
+        if (!$posModuleInstalled) {
             return null;
         }
         
         $submenu = [];
         
-        if (Route::has('storeowner.possetting.sections')) {
+        // Check for POS Settings routes - try index first, then sections
+        if (Route::has('storeowner.possetting.index')) {
+            $submenu[] = [
+                'label' => 'Settings',
+                'route' => 'storeowner.possetting.index',
+                'enabled' => true,
+                'icon' => '<i class="fa fa-cog"></i>',
+                'type' => 'link',
+            ];
+        } elseif (Route::has('storeowner.possetting.sections')) {
             $submenu[] = [
                 'label' => 'Settings',
                 'route' => 'storeowner.possetting.sections',
                 'enabled' => true,
-                'icon' => '<i class="glyphicon glyphicon-cog"></i>',
+                'icon' => '<i class="fa fa-cog"></i>',
                 'type' => 'link',
             ];
         }
@@ -251,7 +270,7 @@ class MenuService
                 'label' => 'Settings',
                 'route' => 'storeowner.suppliers.settings',
                 'enabled' => true,
-                'icon' => '<i class="glyphicon glyphicon-cog"></i>',
+                'icon' => '<i class="fa fa-cog"></i>',
                 'type' => 'link',
             ];
         }

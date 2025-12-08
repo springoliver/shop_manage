@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stoma_store_usergroup', function (Blueprint $table) {
             $table->increments('suid');
             $table->unsignedBigInteger('storeid');
-            $table->unsignedInteger('usergroupid')->nullable();
+            $table->integer('usergroupid')->nullable();
             $table->decimal('hour_charge', 10, 2)->default('0.00');
             $table->integer('total_week_hour')->default(0);
             $table->datetime('insertdatetime')->nullable();

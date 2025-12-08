@@ -58,7 +58,7 @@ class DocumentController extends Controller
             ->where('e.status', '!=', 'Deactivate')
             ->where('d.storeid', $storeid)
             ->orderBy('d.docid', 'DESC')
-            ->get();
+            ->paginate(15);
         
         return view('storeowner.document.index', compact('employeeDocuments'));
     }

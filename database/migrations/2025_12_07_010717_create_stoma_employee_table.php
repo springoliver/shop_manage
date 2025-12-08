@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stoma_employee', function (Blueprint $table) {
             $table->bigIncrements('employeeid');
             $table->unsignedBigInteger('storeid');
-            $table->unsignedInteger('usergroupid')->nullable();
+            $table->integer('usergroupid')->nullable();
             $table->unsignedBigInteger('departmentid');
             $table->integer('roster_week_hrs')->default(100);
             $table->integer('roster_day_hrs')->default(20);

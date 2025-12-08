@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stoma_employee_review_subjects', function (Blueprint $table) {
             $table->increments('review_subjectid');
             $table->unsignedBigInteger('storeid');
-            $table->unsignedInteger('usergroupid');
+            $table->integer('usergroupid');
             $table->string('subject_name', 255);
             $table->enum('status', ['Enable', 'Disable'])->default('Enable');
             $table->timestamp('insertdatetime')->useCurrent();

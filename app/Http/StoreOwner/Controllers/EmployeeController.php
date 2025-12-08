@@ -28,7 +28,7 @@ class EmployeeController extends Controller
         // Similar to CI's get_all_employee method
         $employees = StoreEmployee::where('storeid', $storeid)
             ->orderBy('employeeid', 'DESC')
-            ->get();
+            ->paginate(15);
         
         return view('storeowner.employee.index', compact('employees'));
     }

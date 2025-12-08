@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stoma_module_access', function (Blueprint $table) {
             $table->bigIncrements('accessid');
             $table->unsignedBigInteger('storeid');
-            $table->unsignedInteger('usergroupid')->nullable();
+            $table->integer('usergroupid')->nullable();
             $table->unsignedBigInteger('moduleid');
             $table->enum('level', ['Admin', 'View', 'None'])->default('None');
             $table->timestamp('insertdate')->nullable();

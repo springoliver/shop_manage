@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('stoma_pages', function (Blueprint $table) {
             $table->integer('pageid')->autoIncrement();
             $table->string('meta_title', 255)->default('');
-            $table->text('meta_keyword')->default('');
-            $table->text('meta_description')->default('');
+            $table->text('meta_keyword');
+            $table->text('meta_description');
             $table->string('page_title', 255)->default('');
-            $table->text('short_description')->default('');
-            $table->text('description')->default('');
+            $table->text('short_description');
+            $table->text('description');
             $table->enum('status', ['Enable', 'Disable'])->default('Enable');
             $table->timestamp('edit_date')->useCurrent()->useCurrentOnUpdate();
             $table->string('edit_ip', 51)->default('');

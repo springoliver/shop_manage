@@ -98,7 +98,7 @@ class EmployeeReviewsController extends Controller
             ->where('er.storeid', $storeid)
             ->groupBy('er.employeeid', DB::raw('DATE(er.insertdatetime)'))
             ->orderBy(DB::raw('MIN(er.insertdatetime)'), 'DESC')
-            ->get();
+            ->paginate(15);
         
         return view('storeowner.employeereviews.all_reviews', compact('reviews'));
     }
@@ -132,7 +132,7 @@ class EmployeeReviewsController extends Controller
             ->whereRaw('er.next_review_date <= DATE_ADD(NOW(), INTERVAL 15 DAY)')
             ->groupBy('er.employeeid', DB::raw('DATE(er.insertdatetime)'))
             ->orderBy(DB::raw('MIN(er.next_review_date)'), 'ASC')
-            ->get();
+            ->paginate(15);
         
         return view('storeowner.employeereviews.due_reviews', compact('reviews'));
     }
@@ -166,7 +166,7 @@ class EmployeeReviewsController extends Controller
             ->where('er.storeid', $storeid)
             ->groupBy('er.employeeid', DB::raw('DATE(er.insertdatetime)'))
             ->orderBy(DB::raw('MIN(er.insertdatetime)'), 'DESC')
-            ->get();
+            ->paginate(15);
         
         return view('storeowner.employeereviews.reviews_by_employee', compact('reviews'));
     }
@@ -392,7 +392,7 @@ class EmployeeReviewsController extends Controller
             ->leftJoin('stoma_usergroup as u', 'u.usergroupid', '=', 'ers.usergroupid')
             ->where('ers.storeid', $storeid)
             ->orderBy('ers.review_subjectid', 'DESC')
-            ->get();
+            ->paginate(15);
         
         return view('storeowner.employeereviews.review_subjects', compact('subjects'));
     }

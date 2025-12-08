@@ -86,7 +86,7 @@ class EmployeePayrollController extends Controller
             ->where('p.storeid', $storeid)
             ->groupBy('p.storeid', 'e.employeeid')
             ->orderBy(DB::raw('MAX(p.payslipid)'), 'DESC')
-            ->get();
+            ->paginate(15);
         
         return view('storeowner.employeepayroll.index', compact('payslips'));
     }

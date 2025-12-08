@@ -20,6 +20,10 @@ use App\Http\StoreOwner\Controllers\ClockTimeController as StoreOwnerClockTimeCo
 use App\Http\StoreOwner\Controllers\DocumentController as StoreOwnerDocumentController;
 use App\Http\StoreOwner\Controllers\EmployeePayrollController as StoreOwnerEmployeePayrollController;
 use App\Http\StoreOwner\Controllers\EmployeeReviewsController as StoreOwnerEmployeeReviewsController;
+use App\Http\StoreOwner\Controllers\PosSettingController as StoreOwnerPosSettingController;
+use App\Http\StoreOwner\Controllers\SupplierSettingController as StoreOwnerSupplierSettingController;
+use App\Http\StoreOwner\Controllers\SupplierController as StoreOwnerSupplierController;
+use App\Http\StoreOwner\Controllers\ProductController as StoreOwnerProductController;
 use Illuminate\Support\Facades\Route;
 
 // StoreOwner Routes (Default End Users)
@@ -203,6 +207,113 @@ Route::name('storeowner.')->group(function () {
         Route::get('employeereviews/edit_review_subject/{review_subjectid}', [StoreOwnerEmployeeReviewsController::class, 'editReviewSubject'])->name('employeereviews.edit-review-subject');
         Route::delete('employeereviews/review_subject/{review_subjectid}', [StoreOwnerEmployeeReviewsController::class, 'destroyReviewSubject'])->name('employeereviews.destroy-review-subject');
         Route::post('employeereviews/change_review_subject_status', [StoreOwnerEmployeeReviewsController::class, 'changeReviewSubjectStatus'])->name('employeereviews.change-review-subject-status');
+
+        // POS Settings routes
+        Route::get('possetting', [StoreOwnerPosSettingController::class, 'index'])->name('possetting.index');
+        
+        // Sections
+        Route::get('possetting/sections', [StoreOwnerPosSettingController::class, 'sections'])->name('possetting.sections');
+        Route::get('possetting/sections/{pos_floor_section_id}/edit', [StoreOwnerPosSettingController::class, 'editSection'])->name('possetting.edit-section');
+        Route::post('possetting/update_floor_sections', [StoreOwnerPosSettingController::class, 'updateFloorSections'])->name('possetting.update-floor-sections');
+        Route::delete('possetting/sections/{pos_floor_section_id}', [StoreOwnerPosSettingController::class, 'deleteSection'])->name('possetting.delete-section');
+        
+        // Tables
+        Route::get('possetting/tables', [StoreOwnerPosSettingController::class, 'tables'])->name('possetting.tables');
+        Route::get('possetting/tables/{pos_floor_table_id}/edit', [StoreOwnerPosSettingController::class, 'editTable'])->name('possetting.edit-table');
+        Route::post('possetting/update_floor_tables', [StoreOwnerPosSettingController::class, 'updateFloorTables'])->name('possetting.update-floor-tables');
+        Route::delete('possetting/tables/{pos_floor_table_id}', [StoreOwnerPosSettingController::class, 'deleteTable'])->name('possetting.delete-table');
+        
+        // Floor Layout
+        Route::get('possetting/floor_layout', [StoreOwnerPosSettingController::class, 'floorLayout'])->name('possetting.floor-layout');
+        Route::get('possetting/floor_layout/{pos_floor_section_id}', [StoreOwnerPosSettingController::class, 'floorLayoutSectionsTables'])->name('possetting.floor-layout-section');
+        
+        // Printers
+        Route::get('possetting/printers', [StoreOwnerPosSettingController::class, 'printers'])->name('possetting.printers');
+        Route::get('possetting/printers/{pos_receiptprinters_id}/edit', [StoreOwnerPosSettingController::class, 'editPrinter'])->name('possetting.edit-printer');
+        Route::post('possetting/update_printers', [StoreOwnerPosSettingController::class, 'updatePrinters'])->name('possetting.update-printers');
+        Route::delete('possetting/printers/{pos_receiptprinters_id}', [StoreOwnerPosSettingController::class, 'deletePrinter'])->name('possetting.delete-printer');
+        
+        // Sales Types
+        Route::get('possetting/sales_types', [StoreOwnerPosSettingController::class, 'salesTypes'])->name('possetting.sales-types');
+        Route::get('possetting/sales_types/{pos_sales_types_id}/edit', [StoreOwnerPosSettingController::class, 'editSalesType'])->name('possetting.edit-sales-type');
+        Route::post('possetting/update_sales_types', [StoreOwnerPosSettingController::class, 'updateSalesTypes'])->name('possetting.update-sales-types');
+        Route::delete('possetting/sales_types/{pos_sales_types_id}', [StoreOwnerPosSettingController::class, 'deleteSalesType'])->name('possetting.delete-sales-type');
+        
+        // Payment Types
+        Route::get('possetting/payment_types', [StoreOwnerPosSettingController::class, 'paymentTypes'])->name('possetting.payment-types');
+        Route::get('possetting/payment_types/{pos_payment_types_id}/edit', [StoreOwnerPosSettingController::class, 'editPaymentType'])->name('possetting.edit-payment-type');
+        Route::post('possetting/update_payment_types', [StoreOwnerPosSettingController::class, 'updatePaymentTypes'])->name('possetting.update-payment-types');
+        Route::delete('possetting/payment_types/{pos_payment_types_id}', [StoreOwnerPosSettingController::class, 'deletePaymentType'])->name('possetting.delete-payment-type');
+        
+        // Refund Reasons
+        Route::get('possetting/refund_reasons', [StoreOwnerPosSettingController::class, 'refundReasons'])->name('possetting.refund-reasons');
+        Route::get('possetting/refund_reasons/{pos_refund_reason_id}/edit', [StoreOwnerPosSettingController::class, 'editRefundReason'])->name('possetting.edit-refund-reason');
+        Route::post('possetting/update_refund_reasons', [StoreOwnerPosSettingController::class, 'updateRefundReasons'])->name('possetting.update-refund-reasons');
+        Route::delete('possetting/refund_reasons/{pos_refund_reason_id}', [StoreOwnerPosSettingController::class, 'deleteRefundReason'])->name('possetting.delete-refund-reason');
+        
+        // Gratuity
+        Route::get('possetting/graduity', [StoreOwnerPosSettingController::class, 'gratuity'])->name('possetting.gratuity');
+        Route::get('possetting/graduity/{pos_graduity_id}/edit', [StoreOwnerPosSettingController::class, 'editGratuity'])->name('possetting.edit-gratuity');
+        Route::post('possetting/update_graduity', [StoreOwnerPosSettingController::class, 'updateGratuity'])->name('possetting.update-gratuity');
+        Route::delete('possetting/graduity/{pos_graduity_id}', [StoreOwnerPosSettingController::class, 'deleteGratuity'])->name('possetting.delete-gratuity');
+        
+        // Discounts
+        Route::get('possetting/discounts', [StoreOwnerPosSettingController::class, 'discounts'])->name('possetting.discounts');
+        Route::get('possetting/discounts/{pos_discount_id}/edit', [StoreOwnerPosSettingController::class, 'editDiscount'])->name('possetting.edit-discount');
+        Route::post('possetting/update_discount', [StoreOwnerPosSettingController::class, 'updateDiscount'])->name('possetting.update-discount');
+        Route::delete('possetting/discounts/{pos_discount_id}', [StoreOwnerPosSettingController::class, 'deleteDiscount'])->name('possetting.delete-discount');
+        
+        // Modifiers
+        Route::get('possetting/modifiers', [StoreOwnerPosSettingController::class, 'modifiers'])->name('possetting.modifiers');
+        Route::get('possetting/modifiers/{pos_modifiers_id}/edit', [StoreOwnerPosSettingController::class, 'editModifier'])->name('possetting.edit-modifier');
+        Route::post('possetting/update_modifier', [StoreOwnerPosSettingController::class, 'updateModifier'])->name('possetting.update-modifier');
+        Route::delete('possetting/modifiers/{pos_modifiers_id}', [StoreOwnerPosSettingController::class, 'deleteModifier'])->name('possetting.delete-modifier');
+
+        // Supplier Settings routes
+        Route::get('suppliers/settings', [StoreOwnerSupplierSettingController::class, 'settings'])->name('suppliers.settings');
+        
+        // Suppliers routes
+        Route::get('suppliers', [StoreOwnerSupplierController::class, 'index'])->name('suppliers.index');
+        Route::get('suppliers/add', [StoreOwnerSupplierController::class, 'add'])->name('suppliers.add');
+        Route::get('suppliers/{supplierid}/edit', [StoreOwnerSupplierController::class, 'edit'])->name('suppliers.edit');
+        Route::post('suppliers/update', [StoreOwnerSupplierController::class, 'update'])->name('suppliers.update');
+        Route::delete('suppliers/{supplierid}', [StoreOwnerSupplierController::class, 'destroy'])->name('suppliers.destroy');
+        Route::post('suppliers/change_supplier_status', [StoreOwnerSupplierController::class, 'changeStatus'])->name('suppliers.change-status');
+        
+        // Products routes
+        Route::get('products', [StoreOwnerProductController::class, 'index'])->name('products.index');
+        Route::get('products/by_supplier/{supplierid}', [StoreOwnerProductController::class, 'bySupplier'])->name('products.by-supplier');
+        Route::get('products/add', [StoreOwnerProductController::class, 'add'])->name('products.add');
+        Route::get('products/{productid}/edit', [StoreOwnerProductController::class, 'edit'])->name('products.edit');
+        Route::post('products/update', [StoreOwnerProductController::class, 'update'])->name('products.update');
+        Route::delete('products/{productid}', [StoreOwnerProductController::class, 'destroy'])->name('products.destroy');
+        Route::post('products/change_product_status', [StoreOwnerProductController::class, 'changeStatus'])->name('products.change-status');
+        Route::post('products/change_product_price', [StoreOwnerProductController::class, 'changePrice'])->name('products.change-price');
+        
+        // Catalog Product Groups
+        Route::post('suppliers/settings/update_catalog_group', [StoreOwnerSupplierSettingController::class, 'updateCatalogGroup'])->name('suppliers.update-catalog-group');
+        Route::get('suppliers/settings/catalog_group/{catalog_product_groupid}/edit', [StoreOwnerSupplierSettingController::class, 'editCatalogGroup'])->name('suppliers.edit-catalog-group');
+        Route::delete('suppliers/settings/catalog_group/{catalog_product_groupid}', [StoreOwnerSupplierSettingController::class, 'deleteCatalogGroup'])->name('suppliers.delete-catalog-group');
+        
+        // Product Shipments
+        Route::post('suppliers/settings/update_shipment', [StoreOwnerSupplierSettingController::class, 'updateShipment'])->name('suppliers.update-shipment');
+        Route::get('suppliers/settings/shipment/{shipmentid}/edit', [StoreOwnerSupplierSettingController::class, 'editShipment'])->name('suppliers.edit-shipment');
+        Route::delete('suppliers/settings/shipment/{shipmentid}', [StoreOwnerSupplierSettingController::class, 'deleteShipment'])->name('suppliers.delete-shipment');
+        
+        // Purchase Payment Methods
+        Route::post('suppliers/settings/update_payment_method', [StoreOwnerSupplierSettingController::class, 'updatePaymentMethod'])->name('suppliers.update-payment-method');
+        Route::get('suppliers/settings/payment_method/{purchasepaymentmethodid}/edit', [StoreOwnerSupplierSettingController::class, 'editPaymentMethod'])->name('suppliers.edit-payment-method');
+        Route::delete('suppliers/settings/payment_method/{purchasepaymentmethodid}', [StoreOwnerSupplierSettingController::class, 'deletePaymentMethod'])->name('suppliers.delete-payment-method');
+        
+        // Purchase Measures
+        Route::post('suppliers/settings/update_measure', [StoreOwnerSupplierSettingController::class, 'updateMeasure'])->name('suppliers.update-measure');
+        Route::get('suppliers/settings/measure/{purchasemeasuresid}/edit', [StoreOwnerSupplierSettingController::class, 'editMeasure'])->name('suppliers.edit-measure');
+        Route::delete('suppliers/settings/measure/{purchasemeasuresid}', [StoreOwnerSupplierSettingController::class, 'deleteMeasure'])->name('suppliers.delete-measure');
+        
+        // Tax Settings
+        Route::post('suppliers/settings/update_tax', [StoreOwnerSupplierSettingController::class, 'updateTax'])->name('suppliers.update-tax');
+        Route::get('suppliers/settings/tax/{taxid}/edit', [StoreOwnerSupplierSettingController::class, 'editTax'])->name('suppliers.edit-tax');
+        Route::delete('suppliers/settings/tax/{taxid}', [StoreOwnerSupplierSettingController::class, 'deleteTax'])->name('suppliers.delete-tax');
 
         Route::put('password', [StoreOwnerPasswordController::class, 'update'])->name('password.update');
 

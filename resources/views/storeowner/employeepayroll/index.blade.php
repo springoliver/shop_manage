@@ -152,6 +152,12 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- Pagination -->
+                @if($payslips->hasPages())
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        {{ $payslips->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
