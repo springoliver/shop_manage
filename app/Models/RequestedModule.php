@@ -50,6 +50,19 @@ class RequestedModule extends Model
     ];
 
     /**
+     * The attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'insertdate' => 'datetime',
+            'editdate' => 'datetime',
+        ];
+    }
+
+    /**
      * Get the route key name for Laravel route model binding.
      *
      * @return string

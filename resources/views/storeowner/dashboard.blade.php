@@ -443,7 +443,7 @@ use Illuminate\Support\Facades\Route;
                 @if(in_array('Ordering', $installedModuleNames) && Route::has('storeowner.ordering.get_allpo_chart_weekly'))
                 <div class="bg-white rounded-lg shadow p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Weekly Purchase Orders</h3>
-                    <div id="bar_chart" style="width: 100%; height: 400px;"></div>
+                    <div id="bar_chart" class="w-full min-h-[400px]"></div>
                 </div>
                 @endif
 
@@ -451,7 +451,7 @@ use Illuminate\Support\Facades\Route;
                 @if(in_array('Clock in-out', $installedModuleNames) && Route::has('storeowner.clocktime.get_hours_chart_weekly'))
                 <div class="bg-white rounded-lg shadow p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Weekly Employee Hours</h3>
-                    <div id="bar_chart2" style="width: 100%; height: 400px;"></div>
+                    <div id="bar_chart2" class="w-full min-h-[400px]"></div>
                 </div>
                 @endif
 
@@ -459,7 +459,7 @@ use Illuminate\Support\Facades\Route;
                 @if(in_array('Daily Report', $installedModuleNames) && Route::has('storeowner.dailyreport.get_sales_chart_weekly'))
                 <div class="bg-white rounded-lg shadow p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Weekly Sales Chart</h3>
-                    <div id="bar_chart3" style="width: 100%; height: 400px;"></div>
+                    <div id="bar_chart3" class="w-full min-h-[400px]"></div>
                 </div>
                 @endif
             </div>
@@ -467,12 +467,7 @@ use Illuminate\Support\Facades\Route;
     </div>
 
     @push('scripts')
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Load Google Charts
-        google.charts.load('current', {'packages':['bar']});
-        
         // Dashboard Settings
         $(document).ready(function() {
             var settingsURL = '{{ route('storeowner.dashboard.settings') }}';
@@ -502,11 +497,9 @@ use Illuminate\Support\Facades\Route;
                     firstTimeLoad = false;
                 }
             });
-        });
 
-        // Weekly Purchase Orders Chart
-        @if(in_array('Ordering', $installedModuleNames) && Route::has('storeowner.ordering.get_allpo_chart_weekly'))
-        google.charts.setOnLoadCallback(function() {
+            // Weekly Purchase Orders Chart
+            @if(in_array('Ordering', $installedModuleNames) && Route::has('storeowner.ordering.get_allpo_chart_weekly'))
             $.ajax({
                 type: 'POST',
                 url: '{{ route('storeowner.ordering.get_allpo_chart_weekly') }}',
@@ -514,37 +507,55 @@ use Illuminate\Support\Facades\Route;
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 success: function(data1) {
-                    var data = new google.visualization.DataTable();
-                    data.addColumn('string', 'Week');
-                    data.addColumn('number', 'PO');
-                    
-                    var jsonData = JSON.parse(data1);
-                    for (var i = 0; i < jsonData.length; i++) {
-                        var weekLabel = "Week " + jsonData[i].week + " - " + jsonData[i].year;
-                        data.addRow([weekLabel, parseInt(jsonData[i].total_amount || 0)]);
-                    }
-                    
-                    var options = {
-                        chart: {
-                            title: 'Weekly Purchase Orders',
-                        },
-                        width: '100%',
-                        height: 400,
-                        axes: {
-                            x: { 0: {side: 'top'} }
+                    try {
+                        var jsonData = typeof data1 === 'string' ? JSON.parse(data1) : data1;
+                        
+                        if (!jsonData || jsonData.length === 0) {
+                            document.getElementById('bar_chart').innerHTML = '<p class="text-center text-gray-500 py-8">No data available</p>';
+                            return;
                         }
-                    };
-                    
-                    var chart = new google.charts.Bar(document.getElementById('bar_chart'));
-                    chart.draw(data, google.charts.Bar.convertOptions(options));
+
+                        const maxValue = Math.max(...jsonData.map(item => parseFloat(item.total_amount || 0)));
+
+                        // Create chart HTML
+                        let chartHTML = '<div class="space-y-4">';
+                        
+                        jsonData.forEach(function(item) {
+                            const amount = parseFloat(item.total_amount || 0);
+                            const percentage = maxValue > 0 ? (amount / maxValue) * 100 : 0;
+                            const barWidth = Math.max(percentage, 2); // Minimum 2% width for visibility
+                            const label = "Week " + item.week + " - " + item.year;
+                            
+                            chartHTML += `
+                                <div class="flex items-center">
+                                    <div class="w-32 text-sm font-medium text-gray-700 mr-4 text-right">${label}</div>
+                                    <div class="flex-1 relative">
+                                        <div class="bg-gray-200 rounded-full h-8 flex items-center">
+                                            <div class="bg-blue-600 h-8 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%; min-width: 2%;">
+                                                <span class="text-white text-xs font-medium">€${amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        chartHTML += '</div>';
+                        document.getElementById('bar_chart').innerHTML = chartHTML;
+                    } catch (error) {
+                        console.error('Error loading Weekly Purchase Orders chart:', error);
+                        document.getElementById('bar_chart').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error loading Weekly Purchase Orders chart:', error);
+                    document.getElementById('bar_chart').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
                 }
             });
-        });
-        @endif
+            @endif
 
-        // Weekly Employee Hours Chart
-        @if(in_array('Clock in-out', $installedModuleNames) && Route::has('storeowner.clocktime.get_hours_chart_weekly'))
-        google.charts.setOnLoadCallback(function() {
+            // Weekly Employee Hours Chart
+            @if(in_array('Clock in-out', $installedModuleNames) && Route::has('storeowner.clocktime.get_hours_chart_weekly'))
             $.ajax({
                 type: 'POST',
                 url: '{{ route('storeowner.clocktime.get_hours_chart_weekly') }}',
@@ -552,36 +563,55 @@ use Illuminate\Support\Facades\Route;
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 success: function(data2) {
-                    var data = new google.visualization.DataTable();
-                    data.addColumn('string', 'Week');
-                    data.addColumn('number', 'Total Hours');
-                    
-                    var jsonData = JSON.parse(data2);
-                    for (var i = 0; i < jsonData.length; i++) {
-                        data.addRow([jsonData[i].weekno, parseInt(jsonData[i].hours_worked || 0)]);
-                    }
-                    
-                    var options = {
-                        chart: {
-                            title: 'Weekly Employee Hours',
-                        },
-                        width: '100%',
-                        height: 400,
-                        axes: {
-                            x: { 0: {side: 'top'} }
+                    try {
+                        var jsonData = typeof data2 === 'string' ? JSON.parse(data2) : data2;
+                        
+                        if (!jsonData || jsonData.length === 0) {
+                            document.getElementById('bar_chart2').innerHTML = '<p class="text-center text-gray-500 py-8">No data available</p>';
+                            return;
                         }
-                    };
-                    
-                    var chart = new google.charts.Bar(document.getElementById('bar_chart2'));
-                    chart.draw(data, google.charts.Bar.convertOptions(options));
+
+                        const maxValue = Math.max(...jsonData.map(item => parseFloat(item.hours_worked || 0)));
+
+                        // Create chart HTML
+                        let chartHTML = '<div class="space-y-4">';
+                        
+                        jsonData.forEach(function(item) {
+                            const hours = parseFloat(item.hours_worked || 0);
+                            const percentage = maxValue > 0 ? (hours / maxValue) * 100 : 0;
+                            const barWidth = Math.max(percentage, 2); // Minimum 2% width for visibility
+                            const label = item.weekno || 'N/A';
+                            
+                            chartHTML += `
+                                <div class="flex items-center">
+                                    <div class="w-32 text-sm font-medium text-gray-700 mr-4 text-right">${label}</div>
+                                    <div class="flex-1 relative">
+                                        <div class="bg-gray-200 rounded-full h-8 flex items-center">
+                                            <div class="bg-green-600 h-8 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%; min-width: 2%;">
+                                                <span class="text-white text-xs font-medium">${hours.toFixed(2)} hrs</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        chartHTML += '</div>';
+                        document.getElementById('bar_chart2').innerHTML = chartHTML;
+                    } catch (error) {
+                        console.error('Error loading Weekly Employee Hours chart:', error);
+                        document.getElementById('bar_chart2').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error loading Weekly Employee Hours chart:', error);
+                    document.getElementById('bar_chart2').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
                 }
             });
-        });
-        @endif
+            @endif
 
-        // Weekly Sales Chart
-        @if(in_array('Daily Report', $installedModuleNames) && Route::has('storeowner.dailyreport.get_sales_chart_weekly'))
-        google.charts.setOnLoadCallback(function() {
+            // Weekly Sales Chart
+            @if(in_array('Daily Report', $installedModuleNames) && Route::has('storeowner.dailyreport.get_sales_chart_weekly'))
             $.ajax({
                 type: 'POST',
                 url: '{{ route('storeowner.dailyreport.get_sales_chart_weekly') }}',
@@ -589,32 +619,53 @@ use Illuminate\Support\Facades\Route;
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 success: function(data3) {
-                    var data = new google.visualization.DataTable();
-                    data.addColumn('string', 'Week');
-                    data.addColumn('number', 'Total Sales');
-                    
-                    var jsonData = JSON.parse(data3);
-                    for (var i = 0; i < jsonData.length; i++) {
-                        data.addRow([jsonData[i].week, parseInt(jsonData[i].total_sell || 0)]);
-                    }
-                    
-                    var options = {
-                        chart: {
-                            title: 'Weekly Sales Chart',
-                        },
-                        width: '100%',
-                        height: 400,
-                        axes: {
-                            x: { 0: {side: 'top'} }
+                    try {
+                        var jsonData = typeof data3 === 'string' ? JSON.parse(data3) : data3;
+                        
+                        if (!jsonData || jsonData.length === 0) {
+                            document.getElementById('bar_chart3').innerHTML = '<p class="text-center text-gray-500 py-8">No data available</p>';
+                            return;
                         }
-                    };
-                    
-                    var chart = new google.charts.Bar(document.getElementById('bar_chart3'));
-                    chart.draw(data, google.charts.Bar.convertOptions(options));
+
+                        const maxValue = Math.max(...jsonData.map(item => parseFloat(item.total_sell || 0)));
+
+                        // Create chart HTML
+                        let chartHTML = '<div class="space-y-4">';
+                        
+                        jsonData.forEach(function(item) {
+                            const sales = parseFloat(item.total_sell || 0);
+                            const percentage = maxValue > 0 ? (sales / maxValue) * 100 : 0;
+                            const barWidth = Math.max(percentage, 2); // Minimum 2% width for visibility
+                            const label = item.week || 'N/A';
+                            
+                            chartHTML += `
+                                <div class="flex items-center">
+                                    <div class="w-32 text-sm font-medium text-gray-700 mr-4 text-right">${label}</div>
+                                    <div class="flex-1 relative">
+                                        <div class="bg-gray-200 rounded-full h-8 flex items-center">
+                                            <div class="bg-purple-600 h-8 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%; min-width: 2%;">
+                                                <span class="text-white text-xs font-medium">€${sales.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        chartHTML += '</div>';
+                        document.getElementById('bar_chart3').innerHTML = chartHTML;
+                    } catch (error) {
+                        console.error('Error loading Weekly Sales chart:', error);
+                        document.getElementById('bar_chart3').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error loading Weekly Sales chart:', error);
+                    document.getElementById('bar_chart3').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
                 }
             });
+            @endif
         });
-        @endif
     </script>
     @endpush
 </x-storeowner-app-layout>

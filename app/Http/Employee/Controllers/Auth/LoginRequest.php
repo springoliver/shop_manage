@@ -2,6 +2,7 @@
 
 namespace App\Http\Employee\Controllers\Auth;
 
+use App\Models\Employee;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -41,13 +42,25 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::guard('employee')->attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // Custom authentication matching CI logic
+        $email = $this->input('email');
+        $password = base64_encode($this->input('password')); // CI stores password as base64
+
+        $employee = \App\Models\Employee::where('emailid', $email)
+            ->where('password', $password)
+            ->where('status', 'Active')
+            ->first();
+
+        if (!$employee) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
+
+        // Manually log in the employee
+        Auth::guard('employee')->login($employee, $this->boolean('remember'));
 
         RateLimiter::clear($this->throttleKey());
     }

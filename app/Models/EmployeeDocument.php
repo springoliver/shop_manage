@@ -76,7 +76,7 @@ class EmployeeDocument extends Model
      */
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(StoreEmployee::class, 'employeeid', 'employeeid');
+        return $this->belongsTo(Employee::class, 'employeeid', 'employeeid');
     }
 }
 

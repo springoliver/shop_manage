@@ -1,15 +1,42 @@
 <x-employee-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
-        </h2>
-    </x-slot>
+    <!-- Breadcrumb -->
+    <div class="mb-6">
+        <nav class="flex text-gray-500 text-sm" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('employee.dashboard') }}" class="inline-flex items-center hover:text-gray-700">
+                        <i class="fas fa-home mr-2"></i>
+                        Home
+                    </a>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                        <span class="ml-1 font-medium text-gray-700 md:ml-2">Dashboard</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+    </div>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Flash Messages -->
+            @if(session('success'))
+                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('error') }}</span>
+                </div>
+            @endif
+
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-semibold mb-4">Welcome, {{ Auth::guard('employee')->user()->name }}!</h3>
+                    <h3 class="text-lg font-semibold mb-4">Welcome, {{ Auth::guard('employee')->user()->firstname }} {{ Auth::guard('employee')->user()->lastname }}!</h3>
 
                     <div class="mb-4">
                         <p class="text-sm text-gray-600">Your Role:
