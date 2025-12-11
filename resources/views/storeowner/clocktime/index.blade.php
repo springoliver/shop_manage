@@ -53,9 +53,10 @@
             </div>
             <div class="flex-1 min-w-[200px]">
                 <select id="employeeid" name="employeeid[]" multiple class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <option value="" {{ (!isset($selectedEmployeeIds) || empty($selectedEmployeeIds)) ? 'selected' : '' }}>All Employees</option>
                     @foreach($employees as $employee)
                         <option value="{{ $employee->employeeid }}" 
-                                {{ (isset($employeeids) && in_array($employee->employeeid, $employeeids)) ? 'selected' : '' }}>
+                                {{ (isset($selectedEmployeeIds) && in_array($employee->employeeid, $selectedEmployeeIds)) ? 'selected' : '' }}>
                             {{ $employee->firstname }} {{ $employee->lastname }}
                         </option>
                     @endforeach
@@ -86,6 +87,7 @@
             </div>
             <div class="flex-1 min-w-[200px]">
                 <select id="employeeid2" name="employeeid[]" multiple class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <option value="" selected>All Employees</option>
                     @foreach($employees as $employee)
                         <option value="{{ $employee->employeeid }}">
                             {{ $employee->firstname }} {{ $employee->lastname }}
@@ -123,12 +125,28 @@
                         @forelse($clockDetails ?? [] as $detail)
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <a href="#" class="text-blue-600 hover:text-blue-800">
+                                    @if($detail->employee && $detail->clockin)
+                                        <a href="{{ route('storeowner.clocktime.week-clock-time', [
+                                            'employeeid' => base64_encode($detail->employeeid),
+                                            'date' => \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d')
+                                        ]) }}" class="text-blue-600 hover:text-blue-800" title="Click here to manage clock in-out of {{ ucfirst($detail->employee->firstname ?? '') }} {{ ucfirst($detail->employee->lastname ?? '') }}">
+                                            {{ ucfirst($detail->employee->firstname ?? '') }} {{ ucfirst($detail->employee->lastname ?? '') }}
+                                        </a>
+                                    @else
                                         {{ ucfirst($detail->employee->firstname ?? '') }} {{ ucfirst($detail->employee->lastname ?? '') }}
-                                    </a>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $detail->week->weeknumber ?? '' }}-{{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y') : '' }}
+                                    @if($detail->week && $detail->clockin)
+                                        <a href="{{ route('storeowner.clocktime.week-clock-time-allemp', [
+                                            'weekid' => base64_encode($detail->weekid),
+                                            'date' => \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d')
+                                        ]) }}" class="text-blue-600 hover:text-blue-800" title="Week">
+                                            {{ $detail->week->weeknumber ?? '' }}-{{ \Carbon\Carbon::parse($detail->clockin)->format('Y') }}
+                                        </a>
+                                    @else
+                                        {{ $detail->week->weeknumber ?? '' }}-{{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y') : '' }}
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('d-m-Y') : '' }}
@@ -208,6 +226,40 @@
                 allowClear: true,
                 width: '100%',
                 closeOnSelect: false
+            });
+            
+            // Handle exclusive selection: "All Employees" OR individual employees (not both)
+            $('#employeeid, #employeeid2').on('select2:select', function (e) {
+                var data = e.params.data;
+                var $select = $(this);
+                
+                // Use setTimeout to ensure Select2 has processed the selection
+                setTimeout(function() {
+                    var selectedValues = $select.val() || [];
+                    
+                    if (data.id === '') {
+                        // "All Employees" was just selected - clear all other selections
+                        $select.val(['']).trigger('change');
+                    } else {
+                        // An individual employee was just selected - remove "All Employees" if present
+                        var allEmployeesIndex = selectedValues.indexOf('');
+                        if (allEmployeesIndex > -1) {
+                            selectedValues.splice(allEmployeesIndex, 1);
+                            $select.val(selectedValues).trigger('change');
+                        }
+                    }
+                }, 10);
+            });
+            
+            // Also handle on change event as a safety check
+            $('#employeeid, #employeeid2').on('change', function () {
+                var $select = $(this);
+                var selectedValues = $select.val() || [];
+                
+                // If both "All Employees" and individual employees are selected, keep only "All Employees"
+                if (selectedValues.indexOf('') !== -1 && selectedValues.length > 1) {
+                    $select.val(['']).trigger('change');
+                }
             });
         });
     </script>

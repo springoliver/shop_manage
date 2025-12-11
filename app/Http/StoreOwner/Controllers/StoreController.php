@@ -20,12 +20,12 @@ class StoreController extends Controller
     /**
      * Display a listing of the stores.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
         $user = auth('storeowner')->user();
         $ownerid = $user->ownerid;
         
-        // Get all stores for this owner with store type
+        // Load all stores for client-side pagination and sorting
         $stores = Store::with('storeType')
             ->where('storeownerid', $ownerid)
             ->orderBy('insertdate', 'desc')

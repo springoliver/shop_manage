@@ -93,12 +93,12 @@
                                 @foreach($empPayrollHrs as $payroll)
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <a href="#" class="text-blue-600 hover:text-blue-800">
+                                            <a href="{{ route('storeowner.clocktime.weekly-hrs-byweek', ['weekno' => base64_encode($payroll->weekno), 'year' => base64_encode($payroll->year)]) }}" class="text-blue-600 hover:text-blue-800">
                                                 {{ \Carbon\Carbon::parse($payroll->week_start)->format('Y-m-d') }} - {{ $payroll->weekno }}
                                             </a>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <a href="#" class="text-blue-600 hover:text-blue-800">
+                                            <a href="{{ route('storeowner.clocktime.weekly-hrs-byemployee', ['employeeid' => base64_encode($payroll->employeeid)]) }}" class="text-blue-600 hover:text-blue-800">
                                                 {{ $payroll->firstname ?? 'N/A' }} {{ $payroll->lastname ?? '' }}
                                             </a>
                                         </td>
@@ -106,12 +106,12 @@
                                             {{ number_format((float)$payroll->hours_worked, 2) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <a href="#" class="text-blue-600 hover:text-blue-800">
+                                            <a href="{{ route('storeowner.clocktime.monthly_hrs_allemployee') }}" class="text-blue-600 hover:text-blue-800">
                                                 {{ \Carbon\Carbon::parse($payroll->week_start)->format('F') }}
                                             </a>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <a href="#" class="text-blue-600 hover:text-blue-800">
+                                            <a href="{{ route('storeowner.clocktime.yearly-hrs-byemployee', ['employeeid' => base64_encode($payroll->employeeid)]) }}" class="text-blue-600 hover:text-blue-800">
                                                 {{ $payroll->year }}
                                             </a>
                                         </td>

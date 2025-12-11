@@ -73,7 +73,7 @@ class ProductController extends Controller
             })
             ->where('sp.product_status', 'Enable')
             ->orderBy('sp.productid', 'DESC')
-            ->paginate(10);
+            ->get();
         
         return view('storeowner.products.index', compact('storeProducts'));
     }
@@ -111,7 +111,7 @@ class ProductController extends Controller
             ->where('sp.storeid', $storeid)
             ->where('sp.supplierid', (string)$supplierid)
             ->orderBy('sp.productid', 'DESC')
-            ->paginate(10);
+            ->get();
         
         return view('storeowner.products.by_supplier', compact('storeProducts', 'supplier'));
     }

@@ -51,7 +51,7 @@ class SupplierController extends Controller
         
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
             ->orderBy('supplierid', 'DESC')
-            ->paginate(10);
+            ->get();
         
         return view('storeowner.suppliers.index', compact('storeSuppliers'));
     }

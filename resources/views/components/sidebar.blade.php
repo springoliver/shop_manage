@@ -60,34 +60,34 @@
 
         <nav class="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
             {{-- Loop over the $menuItems prop --}}
-            @foreach ($menuItems as $item)
+            @foreach ($menuItems as $index => $item)
                 @if(isset($item['type']) && $item['type'] === 'submenu' && isset($item['submenu']))
+                    @php
+                        $itemLabel = $item['label'] ?? '';
+                        $submenuId = 'submenu-' . $index;
+                        $shouldBeOpen = $isSubmenuOpen($item);
+                    @endphp
                     {{-- Submenu Item --}}
-                    <div x-data="{ open: {{ $isSubmenuOpen($item) ? 'true' : 'false' }} }">
+                    <div>
                         <button
-                            @click="open = !open"
+                            type="button"
+                            onclick="toggleSubmenu('{{ $submenuId }}', this)"
                             class="w-full flex items-center justify-between pl-4 py-2 rounded-md text-gray-400 {{ $isActive($item) ? 'bg-gray-900 text-white' : 'hover:bg-gray-700 hover:text-white' }}"
                         >
                             <div class="flex items-center">
                                 {!! $item['icon'] !!}
                                 <span class="ml-3" x-show="sidebarOpen" x-transition>{{ $item['label'] }}</span>
                             </div>
-                            <i class="fa fa-chevron-right ml-auto transition-transform duration-200" 
-                               :class="{ 'rotate-90': open }" 
+                            <i class="fa fa-chevron-right ml-auto transition-transform duration-200 submenu-chevron" 
                                x-show="sidebarOpen" 
                                x-transition></i>
                         </button>
                         
                         {{-- Submenu Items --}}
                         @if(count($item['submenu']) > 0)
-                            <div x-show="open && sidebarOpen" 
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 transform scale-95"
-                                 x-transition:enter-end="opacity-100 transform scale-100"
-                                 x-transition:leave="transition ease-in duration-75"
-                                 x-transition:leave-start="opacity-100 transform scale-100"
-                                 x-transition:leave-end="opacity-0 transform scale-95"
-                                 class="ml-4 mt-1 space-y-1">
+                            <div id="{{ $submenuId }}" 
+                                 class="ml-4 mt-1 space-y-1 submenu-content {{ $shouldBeOpen ? '' : 'hidden' }}"
+                                 style="display: {{ $shouldBeOpen ? 'block' : 'none' }};">
                                 @foreach ($item['submenu'] as $subitem)
                                     @php
                                         $routeExists = false;
@@ -139,3 +139,40 @@
         </nav>
     </div>
 </aside>
+
+<script>
+function toggleSubmenu(submenuId, button) {
+    // Get the submenu content element
+    const submenuContent = document.getElementById(submenuId);
+    if (!submenuContent) return;
+    
+    // Get all submenu content elements
+    const allSubmenus = document.querySelectorAll('.submenu-content');
+    
+    // Get the chevron icon for this button
+    const chevron = button.querySelector('.submenu-chevron');
+    
+    // Check if this submenu is currently open
+    const isOpen = !submenuContent.classList.contains('hidden');
+    
+    // Close all submenus first
+    allSubmenus.forEach(submenu => {
+        submenu.classList.add('hidden');
+        submenu.style.display = 'none';
+    });
+    
+    // Remove rotate class from all chevrons
+    document.querySelectorAll('.submenu-chevron').forEach(icon => {
+        icon.classList.remove('rotate-90');
+    });
+    
+    // If this submenu was closed, open it
+    if (!isOpen) {
+        submenuContent.classList.remove('hidden');
+        submenuContent.style.display = 'block';
+        if (chevron) {
+            chevron.classList.add('rotate-90');
+        }
+    }
+}
+</script>

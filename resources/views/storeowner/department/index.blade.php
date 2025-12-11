@@ -45,30 +45,55 @@
         </div>
     @endif
 
+    <!-- Search and Per Page Controls -->
+    <div class="mb-4 flex justify-between items-center flex-wrap gap-4">
+        <div class="flex items-center gap-2">
+            <input type="text" 
+                   id="searchbox"
+                   placeholder="Search departments..." 
+                   class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm">
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-700">Show:</label>
+            <select id="perPageSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 min-w-[68px] text-sm">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span class="text-sm text-gray-700">entries</span>
+        </div>
+    </div>
+
     <!-- Table Card -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="p-6">
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+                <table id="table-new" class="min-w-full divide-y divide-gray-200">
                     <thead>
                         <tr class="bg-gray-50">
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Department Name
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="name" style="cursor: pointer;">
+                                Department Name <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Store Type
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="type" style="cursor: pointer;">
+                                Store Type <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="status" style="cursor: pointer;">
+                                Status <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
                             <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Action
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white divide-y divide-gray-200" id="departmentTableBody">
                         @forelse ($departments as $department)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="department-row hover:bg-gray-50" 
+                                data-row-index="{{ $loop->index }}"
+                                data-name="{{ strtolower($department->department) }}"
+                                data-type="{{ strtolower($department->store_type ?? 'n/a') }}"
+                                data-status="{{ strtolower($department->status ?? '') }}">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">
                                         {{ $department->department }}
@@ -80,20 +105,15 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $department->store_type ?? 'N/A' }}</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <td class="px-6 py-4 whitespace-nowrap text-left">
                                     @if($department->storeid != '0')
-                                        @if($department->status == 'Enable')
-                                            <button type="button" onclick="window.openStatusModal('confirm-status{{ $department->departmentid }}')" class="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded hover:bg-green-600">
-                                                Enable
-                                            </button>
-                                        @else
-                                            <button type="button" onclick="window.openStatusModal('confirm-status{{ $department->departmentid }}')" class="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded hover:bg-red-600">
-                                                Disable
-                                            </button>
-                                        @endif
+                                        <button type="button" onclick="window.openStatusModal('confirm-status{{ $department->departmentid }}')" 
+                                            class="px-2 py-1 text-xs font-semibold rounded-full {{ $department->status === 'Enable' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                            {{ $department->status }}
+                                        </button>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     @if($department->storeid != '0')
                                         <div class="flex justify-center space-x-3">
                                             <!-- Edit -->
@@ -113,7 +133,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr>
+                            <tr id="noDepartmentsRow">
                                 <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
                                     No departments found.
                                 </td>
@@ -121,6 +141,14 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            
+            <!-- Pagination Info and Controls -->
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    Showing <span id="showingStart">1</span> to <span id="showingEnd">0</span> of <span id="totalEntries">0</span> entries
+                </div>
+                <div id="paginationControls"></div>
             </div>
         </div>
     </div>
@@ -174,7 +202,305 @@
         <span><i class="fas fa-trash-alt text-red-600 hover:text-red-900"></i> Delete</span>
     </div>
 
+    @push('styles')
+    <style>
+        /* Table cell height and borders - matching My Stores structure */
+        table th,
+        table td {
+            height: 50px;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 24px;
+        }
+        
+        table tbody tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+    @endpush
+
+    @push('scripts')
     <script>
+        // Client-side pagination, search, and sorting
+        let currentPage = 1;
+        let perPage = 10;
+        let allRows = [];
+        let filteredRows = [];
+        let sortColumn = null;
+        let sortDirection = 'asc'; // 'asc' or 'desc'
+
+        function initializePagination() {
+            const tbody = document.getElementById('departmentTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.department-row'));
+            filteredRows = [...allRows];
+            
+            // Hide no departments row if there are departments
+            const noDepartmentsRow = document.getElementById('noDepartmentsRow');
+            if (noDepartmentsRow && allRows.length > 0) {
+                noDepartmentsRow.style.display = 'none';
+            }
+            
+            perPage = parseInt(document.getElementById('perPageSelect').value);
+            currentPage = 1;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Always refresh allRows from DOM to ensure valid references
+            const tbody = document.getElementById('departmentTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.department-row'));
+            
+            // Filter rows based on search
+            const searchTerm = document.getElementById('searchbox')?.value.toLowerCase() || '';
+            
+            if (searchTerm) {
+                filteredRows = allRows.filter(row => {
+                    const text = row.textContent.toLowerCase();
+                    return text.includes(searchTerm);
+                });
+            } else {
+                filteredRows = [...allRows];
+            }
+
+            // Sort rows if a sort column is selected
+            if (sortColumn) {
+                filteredRows.sort((a, b) => {
+                    const aValue = a.getAttribute(`data-${sortColumn}`) || '';
+                    const bValue = b.getAttribute(`data-${sortColumn}`) || '';
+                    
+                    // String comparison
+                    if (aValue < bValue) {
+                        return sortDirection === 'asc' ? -1 : 1;
+                    }
+                    if (aValue > bValue) {
+                        return sortDirection === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredRows.length / perPage);
+            const start = (currentPage - 1) * perPage;
+            const end = Math.min(start + perPage, filteredRows.length);
+
+            // Reorder rows in DOM if sorted
+            if (sortColumn && filteredRows.length > 0) {
+                const noDepartmentsRow = document.getElementById('noDepartmentsRow');
+                
+                // Remove all department rows from DOM (they'll be re-added in sorted order)
+                allRows.forEach(row => {
+                    if (row.id !== 'noDepartmentsRow') {
+                        row.remove();
+                    }
+                });
+                
+                // Insert sorted rows in correct order
+                filteredRows.forEach(row => {
+                    if (row.id !== 'noDepartmentsRow') {
+                        if (noDepartmentsRow && noDepartmentsRow.parentNode) {
+                            tbody.insertBefore(row, noDepartmentsRow);
+                        } else {
+                            tbody.appendChild(row);
+                        }
+                    }
+                });
+                
+                // Update allRows and filteredRows after DOM reordering
+                allRows = Array.from(tbody.querySelectorAll('tr.department-row'));
+                // Rebuild filteredRows from allRows in sorted order
+                const sortedFilteredIndices = filteredRows.map(row => row.getAttribute('data-row-index'));
+                const newFilteredRows = [];
+                allRows.forEach(row => {
+                    const rowIndex = row.getAttribute('data-row-index');
+                    if (sortedFilteredIndices.includes(rowIndex)) {
+                        newFilteredRows.push(row);
+                    }
+                });
+                filteredRows = newFilteredRows;
+            }
+
+            // Hide all rows first
+            allRows.forEach(row => {
+                if (row.id !== 'noDepartmentsRow') {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Show/hide no departments message
+            const noDepartmentsRow = document.getElementById('noDepartmentsRow');
+            if (noDepartmentsRow) {
+                if (filteredRows.length === 0) {
+                    noDepartmentsRow.style.display = '';
+                } else {
+                    noDepartmentsRow.style.display = 'none';
+                }
+            }
+
+            // Show rows for current page
+            for (let i = start; i < end; i++) {
+                if (filteredRows[i] && filteredRows[i].id !== 'noDepartmentsRow') {
+                    filteredRows[i].style.display = '';
+                }
+            }
+
+            // Update pagination info
+            document.getElementById('showingStart').textContent = filteredRows.length === 0 ? 0 : start + 1;
+            document.getElementById('showingEnd').textContent = end;
+            document.getElementById('totalEntries').textContent = filteredRows.length;
+
+            // Generate pagination controls
+            generatePaginationControls(totalPages);
+        }
+
+        function generatePaginationControls(totalPages) {
+            const paginationDiv = document.getElementById('paginationControls');
+            paginationDiv.innerHTML = '';
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Previous';
+            prevBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === 1 ? ' opacity-50 cursor-not-allowed' : '');
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(prevBtn);
+
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                firstBtn.onclick = () => {
+                    currentPage = 1;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(firstBtn);
+
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md ' + 
+                    (i === currentPage ? 'bg-gray-800 text-white' : 'hover:bg-gray-100');
+                pageBtn.onclick = () => {
+                    currentPage = i;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                lastBtn.onclick = () => {
+                    currentPage = totalPages;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(lastBtn);
+            }
+
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next';
+            nextBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === totalPages ? ' opacity-50 cursor-not-allowed' : '');
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(nextBtn);
+        }
+
+        function sortTable(column) {
+            // If clicking the same column, toggle direction
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            // Update sort indicators - reset all to default sort icon
+            document.querySelectorAll('.sortable .sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '<i class="fas fa-sort text-gray-400"></i>';
+            });
+
+            // Update the active column's sort indicator
+            const clickedHeader = document.querySelector(`th[data-sort="${column}"]`);
+            if (clickedHeader) {
+                const indicator = clickedHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = sortDirection === 'asc' 
+                        ? '<i class="fas fa-sort-up text-gray-800"></i>' 
+                        : '<i class="fas fa-sort-down text-gray-800"></i>';
+                }
+            }
+
+            currentPage = 1; // Reset to first page when sorting
+            updateDisplay();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePagination();
+
+            // Search functionality
+            document.getElementById('searchbox')?.addEventListener('keyup', function() {
+                currentPage = 1; // Reset to first page on search
+                updateDisplay();
+            });
+
+            // Per page change
+            document.getElementById('perPageSelect')?.addEventListener('change', function() {
+                perPage = parseInt(this.value);
+                currentPage = 1;
+                updateDisplay();
+            });
+
+            // Sort functionality - attach click handlers to sortable headers
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.getAttribute('data-sort');
+                    if (column) {
+                        sortTable(column);
+                    }
+                });
+            });
+        });
+
         // Make functions globally accessible for inline onclick handlers
         window.openStatusModal = function(id) {
             let modal = document.getElementById(id);
@@ -194,4 +520,5 @@
             }
         };
     </script>
+    @endpush
 </x-storeowner-app-layout>

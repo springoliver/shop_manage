@@ -64,18 +64,6 @@
 
                     <div class="flex items-start gap-4 mb-6">
                         <label class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
-                            Supplier Name <span class="text-red-500">*</span>
-                        </label>
-                        <div class="w-3/4">
-                            <input type="text" name="supplier_name" id="supplier_name" 
-                                   value="{{ old('supplier_name') }}"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
-                                   required>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start gap-4 mb-6">
-                        <label class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
                             Purchase Order Supplier <span class="text-red-500">*</span>
                         </label>
                         <div class="w-3/4">
@@ -87,6 +75,18 @@
                                 <input type="radio" name="purchase_supplier" value="No" {{ old('purchase_supplier') == 'No' ? 'checked' : '' }} class="mr-2" required>
                                 <span>No</span>
                             </label>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4 mb-6">
+                        <label class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
+                            Supplier Name <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-3/4">
+                            <input type="text" name="supplier_name" id="supplier_name" 
+                                   value="{{ old('supplier_name') }}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
+                                   required>
                         </div>
                     </div>
 

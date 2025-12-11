@@ -24,6 +24,9 @@ use App\Http\StoreOwner\Controllers\PosSettingController as StoreOwnerPosSetting
 use App\Http\StoreOwner\Controllers\SupplierSettingController as StoreOwnerSupplierSettingController;
 use App\Http\StoreOwner\Controllers\SupplierController as StoreOwnerSupplierController;
 use App\Http\StoreOwner\Controllers\ProductController as StoreOwnerProductController;
+use App\Http\StoreOwner\Controllers\OrderingSettingController as StoreOwnerOrderingSettingController;
+use App\Http\StoreOwner\Controllers\OrderingController as StoreOwnerOrderingController;
+use App\Http\StoreOwner\Controllers\AjaxController as StoreOwnerAjaxController;
 use Illuminate\Support\Facades\Route;
 
 // StoreOwner Routes (Default End Users)
@@ -64,6 +67,11 @@ Route::name('storeowner.')->group(function () {
     // StoreOwner Authenticated Routes
     Route::middleware('auth.storeowner')->group(function () {
         Route::get('/', [StoreOwnerDashboardController::class, 'index'])->name('dashboard');
+        Route::post('/', [StoreOwnerDashboardController::class, 'index'])->name('dashboard.post');
+        
+        // Dashboard Settings AJAX
+        Route::post('dashboard/settings', [StoreOwnerDashboardController::class, 'settings'])->name('dashboard.settings');
+        Route::get('dashboard/getSettings', [StoreOwnerDashboardController::class, 'getSettings'])->name('dashboard.getSettings');
 
         // Store routes
         Route::get('store', [StoreOwnerStoreController::class, 'index'])->name('store.index');
@@ -131,11 +139,17 @@ Route::name('storeowner.')->group(function () {
         // Roster routes (Weekly Roster)
         Route::get('roster/week', [StoreOwnerRosterController::class, 'weekroster'])->name('roster.weekroster');
         Route::post('roster/week/add', [StoreOwnerRosterController::class, 'weekrosteradd'])->name('roster.weekrosteradd');
-        Route::get('roster/week/{weekid}', [StoreOwnerRosterController::class, 'viewweekroster'])->name('roster.viewweekroster');
+        Route::get('roster/viewweekroster', [StoreOwnerRosterController::class, 'viewweekroster'])->name('roster.viewweekroster');
+        Route::get('roster/week/{weekid}', [StoreOwnerRosterController::class, 'viewweekroster'])->name('roster.viewweekroster.byid');
         Route::get('roster/week/{weekid}/dept/{departmentid?}', [StoreOwnerRosterController::class, 'rosterforweek'])->name('roster.rosterforweek');
-        Route::get('roster/week/{weekid}/employee/{employeeid}/edit', [StoreOwnerRosterController::class, 'editweekroster'])->name('roster.editweekroster');
-        Route::put('roster/week/{weekid}/employee/{employeeid}', [StoreOwnerRosterController::class, 'updateweekroster'])->name('roster.updateweekroster');
         Route::delete('roster/week/{weekid}/employee/{employeeid}', [StoreOwnerRosterController::class, 'deleterosterweek'])->name('roster.deleterosterweek');
+        Route::get('roster/print', [StoreOwnerRosterController::class, 'printviewroster'])->name('roster.printviewroster');
+        Route::get('roster/search-print', [StoreOwnerRosterController::class, 'searchprintroster'])->name('roster.searchprintroster');
+        Route::post('roster/search-print', [StoreOwnerRosterController::class, 'searchprintroster'])->name('roster.searchprintroster');
+        Route::get('roster/search-week', [StoreOwnerRosterController::class, 'searchweekroster'])->name('roster.searchweekroster');
+        Route::post('roster/search-week', [StoreOwnerRosterController::class, 'searchweekroster'])->name('roster.searchweekroster');
+        Route::post('roster/add-edit-week', [StoreOwnerRosterController::class, 'addeditweekroster'])->name('roster.addeditweekroster');
+        Route::get('roster/email', [StoreOwnerRosterController::class, 'emailRoster'])->name('roster.email');
 
         // Holiday Request routes (specific routes must come before parameterized routes)
         Route::get('holidayrequest', [StoreOwnerHolidayRequestController::class, 'index'])->name('holidayrequest.index');
@@ -168,6 +182,25 @@ Route::name('storeowner.')->group(function () {
         Route::get('clocktime/compare_weekly_hrs', [StoreOwnerClockTimeController::class, 'compareWeeklyHrs'])->name('clocktime.compare_weekly_hrs');
         Route::get('clocktime/allemployee_weeklyhrs', [StoreOwnerClockTimeController::class, 'allemployeeWeeklyhrs'])->name('clocktime.allemployee_weeklyhrs');
         Route::get('clocktime/monthly_hrs_allemployee', [StoreOwnerClockTimeController::class, 'monthlyHrsAllEmployee'])->name('clocktime.monthly_hrs_allemployee');
+        Route::get('clocktime/week-clock-time/{employeeid}/{date}', [StoreOwnerClockTimeController::class, 'weekClockTime'])->name('clocktime.week-clock-time');
+        Route::get('clocktime/week-clock-time-allemp/{weekid}/{date}', [StoreOwnerClockTimeController::class, 'weekClockTimeAllEmp'])->name('clocktime.week-clock-time-allemp');
+        Route::post('clocktime/edit-clock-inout', [StoreOwnerClockTimeController::class, 'editClockInOut'])->name('clocktime.edit-clock-inout');
+        Route::post('clocktime/edit-emp-timecard', [StoreOwnerClockTimeController::class, 'editEmpTimecard'])->name('clocktime.edit-emp-timecard');
+        Route::post('clocktime/add-shift', [StoreOwnerClockTimeController::class, 'addShift'])->name('clocktime.add-shift');
+        Route::get('clocktime/delete-shift/{eltid}', [StoreOwnerClockTimeController::class, 'deleteShift'])->name('clocktime.delete-shift');
+        Route::get('clocktime/generate-week-payslip', [StoreOwnerClockTimeController::class, 'generateWeekPayslip'])->name('clocktime.generate-week-payslip');
+        Route::get('clocktime/export-week-allemp/{weekid}/{date}', [StoreOwnerClockTimeController::class, 'exportWeekAllEmp'])->name('clocktime.export-week-allemp');
+        Route::post('clocktime/upload-allemployee-daily-hours', [StoreOwnerClockTimeController::class, 'uploadAllEmployeeDailyHours'])->name('clocktime.upload-allemployee-daily-hours');
+        Route::get('clocktime/week-allemp-payroll-hrs/{weekid}/{date}', [StoreOwnerClockTimeController::class, 'weekAllEmpPayrollHrs'])->name('clocktime.week-allemp-payroll-hrs');
+        Route::get('clocktime/export-payroll-hrs/{weekid}/{date}', [StoreOwnerClockTimeController::class, 'exportPayrollHrs'])->name('clocktime.export-payroll-hrs');
+        Route::post('clocktime/upload-all-weekly-hours', [StoreOwnerClockTimeController::class, 'uploadAllWeeklyHours'])->name('clocktime.upload-all-weekly-hours');
+        Route::get('clocktime/yearly-hrs-byemployee/{employeeid}', [StoreOwnerClockTimeController::class, 'yearlyHrsByEmployee'])->name('clocktime.yearly-hrs-byemployee');
+        Route::get('clocktime/yearly-hrs-by-year-employee/{employeeid}/{year}', [StoreOwnerClockTimeController::class, 'yearlyHrsByYearEmployee'])->name('clocktime.yearly-hrs-by-year-employee');
+        Route::get('clocktime/group-yearly-hrs-allemployee/{year}', [StoreOwnerClockTimeController::class, 'groupYearlyHrsAllEmployee'])->name('clocktime.group-yearly-hrs-all-employee');
+        Route::get('clocktime/weekly-hrs-byemployee/{employeeid}', [StoreOwnerClockTimeController::class, 'weeklyHrsByEmployee'])->name('clocktime.weekly-hrs-byemployee');
+        Route::get('clocktime/weekly-hrs-byweek/{weekno}/{year}', [StoreOwnerClockTimeController::class, 'weeklyHrsByWeek'])->name('clocktime.weekly-hrs-byweek');
+        Route::get('clocktime/export-all-employee-hols', [StoreOwnerClockTimeController::class, 'exportAllEmployeeHols'])->name('clocktime.export-all-employee-hols');
+        Route::get('clocktime/export-group-all-employee-hols/{year}', [StoreOwnerClockTimeController::class, 'exportGroupAllEmployeeHols'])->name('clocktime.export-group-all-employee-hols');
 
         // Document routes
         Route::get('document', [StoreOwnerDocumentController::class, 'index'])->name('document.index');
@@ -289,6 +322,88 @@ Route::name('storeowner.')->group(function () {
         Route::delete('products/{productid}', [StoreOwnerProductController::class, 'destroy'])->name('products.destroy');
         Route::post('products/change_product_status', [StoreOwnerProductController::class, 'changeStatus'])->name('products.change-status');
         Route::post('products/change_product_price', [StoreOwnerProductController::class, 'changePrice'])->name('products.change-price');
+        
+        // Ordering Settings routes
+        Route::get('ordering/settings', [StoreOwnerOrderingSettingController::class, 'settings'])->name('ordering.settings');
+        
+        // Purchase Order Categories
+        Route::post('ordering/settings/updatecategories', [StoreOwnerOrderingSettingController::class, 'updateCategory'])->name('ordering.update-category');
+        Route::get('ordering/settings/category/{categoryid}/edit', [StoreOwnerOrderingSettingController::class, 'editCategory'])->name('ordering.edit-category');
+        Route::delete('ordering/settings/category/{categoryid}', [StoreOwnerOrderingSettingController::class, 'deleteCategory'])->name('ordering.delete-category');
+        
+        // Supplier Document Types
+        Route::post('ordering/settings/updatesuppdoctype', [StoreOwnerOrderingSettingController::class, 'updateDocType'])->name('ordering.update-doc-type');
+        Route::get('ordering/settings/doc_type/{docs_type_id}/edit', [StoreOwnerOrderingSettingController::class, 'editDocType'])->name('ordering.edit-doc-type');
+        Route::delete('ordering/settings/doc_type/{docs_type_id}', [StoreOwnerOrderingSettingController::class, 'deleteDocType'])->name('ordering.delete-doc-type');
+        
+        // Ordering routes
+        Route::get('ordering', [StoreOwnerOrderingController::class, 'index'])->name('ordering.index');
+        Route::get('ordering/order', [StoreOwnerOrderingController::class, 'order'])->name('ordering.order');
+        Route::post('ordering/order', [StoreOwnerOrderingController::class, 'order'])->name('ordering.order.submit');
+        Route::get('ordering/waiting_approval', [StoreOwnerOrderingController::class, 'waitingApproval'])->name('ordering.waiting_approval');
+        Route::post('ordering/waiting_approval', [StoreOwnerOrderingController::class, 'waitingApproval'])->name('ordering.waiting_approval.submit');
+        
+        // Ordering Reports routes
+        Route::get('ordering/report', [StoreOwnerOrderingController::class, 'report'])->name('ordering.report');
+        Route::post('ordering/report', [StoreOwnerOrderingController::class, 'report'])->name('ordering.report.submit');
+        Route::get('ordering/product_report', [StoreOwnerOrderingController::class, 'productReport'])->name('ordering.product_report');
+        Route::post('ordering/product_report', [StoreOwnerOrderingController::class, 'productReport'])->name('ordering.product_report.submit');
+        Route::get('ordering/missing_delivery_dockets', [StoreOwnerOrderingController::class, 'missingDeliveryDockets'])->name('ordering.missing_delivery_dockets');
+        Route::post('ordering/missing_delivery_dockets', [StoreOwnerOrderingController::class, 'missingDeliveryDockets'])->name('ordering.missing_delivery_dockets.submit');
+        Route::get('ordering/credit_notes', [StoreOwnerOrderingController::class, 'creditNotes'])->name('ordering.credit_notes');
+        Route::post('ordering/credit_notes', [StoreOwnerOrderingController::class, 'creditNotes'])->name('ordering.credit_notes.submit');
+        Route::post('ordering/update_delivery_dock_status', [StoreOwnerOrderingController::class, 'updateDeliveryDockStatus'])->name('ordering.update_delivery_dock_status');
+        
+        // Invoices & Tax routes
+        Route::get('ordering/tax_analysis', [StoreOwnerOrderingController::class, 'taxAnalysis'])->name('ordering.tax_analysis');
+        Route::get('ordering/add_invoice', [StoreOwnerOrderingController::class, 'addInvoice'])->name('ordering.add_invoice');
+        Route::get('ordering/add_bills/{delivery_date}', [StoreOwnerOrderingController::class, 'addBills'])->name('ordering.add_bills');
+        Route::get('ordering/edit_bills/{purchase_orders_id}/{delivery_date}', [StoreOwnerOrderingController::class, 'editBills'])->name('ordering.edit_bills');
+        Route::post('ordering/new_bill', [StoreOwnerOrderingController::class, 'newBill'])->name('ordering.new_bill');
+        
+        // Chart Views
+        Route::get('ordering/reports_chart_yearly', [StoreOwnerOrderingController::class, 'reportsChartYearly'])->name('ordering.reports_chart_yearly');
+        Route::get('ordering/reports_chart_monthly', [StoreOwnerOrderingController::class, 'reportsChartMonthly'])->name('ordering.reports_chart_monthly');
+        Route::get('ordering/reports_chart_weekly', [StoreOwnerOrderingController::class, 'reportsChartWeekly'])->name('ordering.reports_chart_weekly');
+        
+        // PO Reports Charts (separate from Invoices & Tax charts)
+        Route::get('ordering/po_chart_yearly', [StoreOwnerOrderingController::class, 'poChartYearly'])->name('ordering.po_chart_yearly');
+        Route::get('ordering/po_chart_monthly', [StoreOwnerOrderingController::class, 'poChartMonthly'])->name('ordering.po_chart_monthly');
+        Route::get('ordering/po_chart_weekly', [StoreOwnerOrderingController::class, 'poChartWeekly'])->name('ordering.po_chart_weekly');
+        
+        // Chart Data AJAX routes
+        Route::post('ordering/get_allreports_chart_yearly', [StoreOwnerOrderingController::class, 'getAllReportsChartYearly'])->name('ordering.get_allreports_chart_yearly');
+        Route::post('ordering/get_allreports_chart_monthly', [StoreOwnerOrderingController::class, 'getAllReportsChartMonthly'])->name('ordering.get_allreports_chart_monthly');
+        Route::post('ordering/get_allpo_chart_weekly', [StoreOwnerOrderingController::class, 'getAllPoChartWeekly'])->name('ordering.get_allpo_chart_weekly');
+        
+        // PO Reports Chart AJAX endpoints
+        Route::post('ordering/get_po_chart_yearly', [StoreOwnerOrderingController::class, 'getPoChartYearly'])->name('ordering.get_po_chart_yearly');
+        Route::post('ordering/get_po_chart_monthly', [StoreOwnerOrderingController::class, 'getPoChartMonthly'])->name('ordering.get_po_chart_monthly');
+        Route::post('ordering/get_po_chart_weekly', [StoreOwnerOrderingController::class, 'getPoChartWeekly'])->name('ordering.get_po_chart_weekly');
+        
+        // Supplier Documents routes
+        Route::get('ordering/index_supplier_doc', [StoreOwnerOrderingController::class, 'indexSupplierDoc'])->name('ordering.index_supplier_doc');
+        Route::get('ordering/add_supplier_doc', [StoreOwnerOrderingController::class, 'addSupplierDoc'])->name('ordering.add_supplier_doc');
+        Route::post('ordering/update_supplier_doc', [StoreOwnerOrderingController::class, 'updateSupplierDoc'])->name('ordering.update_supplier_doc');
+        Route::get('ordering/delete_supplier_doc/{docid}', [StoreOwnerOrderingController::class, 'deleteSupplierDoc'])->name('ordering.delete_supplier_doc');
+        Route::post('ordering/get_documents', [StoreOwnerOrderingController::class, 'getDocuments'])->name('ordering.get_documents');
+        
+        // Delete Purchase Order
+        Route::delete('ordering/delete-po/{purchase_orders_id}', [StoreOwnerOrderingController::class, 'deletePurchaseOrder'])->name('ordering.delete-po');
+        
+        // AJAX routes
+        Route::get('ajax/get_products_by_supplier_id', [StoreOwnerAjaxController::class, 'getProductsBySupplierId'])->name('ajax.products-by-supplier');
+        Route::get('ajax/get_purchase_order_detail', [StoreOwnerAjaxController::class, 'getPurchaseOrderDetail'])->name('ajax.get-purchase-order-detail');
+        Route::get('ajax/remove_purchase_order', [StoreOwnerAjaxController::class, 'removePurchaseOrder'])->name('ajax.remove-purchase-order');
+        
+        // Roster AJAX routes
+        Route::post('ajax/get_roster_data', [StoreOwnerAjaxController::class, 'getRosterData'])->name('ajax.get-roster-data');
+        Route::post('ajax/get_roster_template_data', [StoreOwnerAjaxController::class, 'getRosterTemplateData'])->name('ajax.get-roster-template-data');
+        Route::post('ajax/get_roster_datas', [StoreOwnerAjaxController::class, 'getRosterDatas'])->name('ajax.get-roster-datas');
+        Route::post('ajax/get_edit_employee_roster', [StoreOwnerAjaxController::class, 'getEditEmployeeRoster'])->name('ajax.get-edit-employee-roster');
+        Route::post('ajax/check_employee_in_leave', [StoreOwnerAjaxController::class, 'checkEmployeeInLeave'])->name('ajax.check-employee-in-leave');
+        Route::post('ajax/check_department_hour', [StoreOwnerAjaxController::class, 'checkDepartmentHour'])->name('ajax.check-department-hour');
+        Route::post('ajax/check_department_modal_hour', [StoreOwnerAjaxController::class, 'checkDepartmentModalHour'])->name('ajax.check-department-modal-hour');
         
         // Catalog Product Groups
         Route::post('suppliers/settings/update_catalog_group', [StoreOwnerSupplierSettingController::class, 'updateCatalogGroup'])->name('suppliers.update-catalog-group');

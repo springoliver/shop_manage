@@ -21,6 +21,26 @@
         </nav>
     </div>
 
+    <!-- Navigation Buttons -->
+    <div class="mb-2 flex flex-wrap gap-2">
+        <a href="{{ route('storeowner.roster.index') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Roster Template
+        </a>
+        <a href="{{ route('storeowner.roster.viewweekroster') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Current Roster
+        </a>
+        <a href="{{ route('storeowner.roster.searchweekroster') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Search & Edit
+        </a>
+        <a href="javascript:void(0);" onclick="document.getElementById('searchPrintForm').submit();" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Search & Print
+        </a>
+        <form id="searchPrintForm" action="{{ route('storeowner.roster.searchprintroster') }}" method="POST" class="hidden">
+            @csrf
+            <input type="hidden" name="dateofbirth" value="{{ date('Y-m-d') }}">
+        </form>
+    </div>
+
     <!-- Header with Add Week Roster Button -->
     <div class="flex justify-between items-center mb-6"> 
         <!-- Department Filter Buttons -->
@@ -66,7 +86,7 @@
                 @csrf
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
+                        <!-- <thead>
                             <tr class="bg-gray-50">
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sun</th>
@@ -78,18 +98,20 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sat</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                             </tr>
-                        </thead>
+                        </thead> -->
                         <tbody class="bg-white divide-y divide-gray-200">
                             <tr>
-                                <td class="px-4 py-3">
-                                    <select id="employeeid_select" name="employeeid" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-500">
-                                        <option value="0">Please Select</option>
+                                <td class="px-1 py-3">
+                                    <select id="employeeid_select" name="employeeid" class="w-full border border-gray-300 rounded-md px-1 py-2 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                        <option value="0">Select</option>
                                         @foreach($employees as $emp)
                                             <option value="{{ $emp->employeeid }}">{{ $emp->firstname }} {{ $emp->lastname }}</option>
-                                            <input type="hidden" id="roster_week_hrs_{{ $emp->employeeid }}" value="{{ $emp->roster_week_hrs }}" />
-                                            <input type="hidden" id="roster_day_hrs_{{ $emp->employeeid }}" value="{{ $emp->roster_day_hrs }}" />
                                         @endforeach
                                     </select>
+                                    @foreach($employees as $emp)
+                                        <input type="hidden" id="roster_week_hrs_{{ $emp->employeeid }}" value="{{ $emp->roster_week_hrs }}" />
+                                        <input type="hidden" id="roster_day_hrs_{{ $emp->employeeid }}" value="{{ $emp->roster_day_hrs }}" />
+                                    @endforeach
                                 </td>
                                 @php
                                     $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -134,12 +156,38 @@
     <!-- Existing Rosters Table -->
     <div class="bg-white rounded-lg shadow">
         <div class="p-6">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Existing Rosters</h2>
+            
+            <!-- Search and Per Page Controls -->
+            <div class="mb-4 flex justify-between items-center flex-wrap gap-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Existing Rosters</h2>
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2">
+                        <input type="text" 
+                            id="searchbox"
+                            placeholder="Search rosters..." 
+                            class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm">
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-700">Show:</label>
+                        <select id="perPageSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 min-w-[68px] text-sm">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="text-sm text-gray-700">entries</span>
+                    </div>
+                </div>
+            </div>
+            
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead>
                         <tr class="bg-gray-50">
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="employee" style="cursor: pointer;">
+                                Employee <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sun</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mon</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tue</th>
@@ -147,11 +195,16 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thu</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fri</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sat</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="total" style="cursor: pointer;">
+                                Total <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white divide-y divide-gray-200" id="rosterTableBody">
+                        @php
+                            $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        @endphp
                         @forelse($employeedata as $employee)
                             @php
                                 $employeeRosters = $weekroster->where('employeeid', $employee->employeeid);
@@ -164,8 +217,12 @@
                                         $totalHours += ceil($diff);
                                     }
                                 }
+                                $employeeName = strtolower($employee->firstname . ' ' . $employee->lastname);
                             @endphp
-                            <tr class="hover:bg-gray-50">
+                            <tr class="roster-row hover:bg-gray-50" 
+                                data-row-index="{{ $loop->index }}"
+                                data-employee="{{ $employeeName }}"
+                                data-total="{{ $totalHours }}">
                                 <td class="px-4 py-3 text-sm font-medium text-gray-900">
                                     {{ $employee->firstname }} {{ $employee->lastname }}
                                 </td>
@@ -204,7 +261,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr>
+                            <tr id="noRostersRow">
                                 <td colspan="10" class="px-4 py-6 text-center text-gray-500">No rosters found</td>
                             </tr>
                         @endforelse
@@ -231,6 +288,16 @@
                     @endif
                 </table>
             </div>
+            
+            <!-- Client-side Pagination -->
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    Showing <span id="showingStart">1</span> to <span id="showingEnd">10</span> of <span id="totalEntries">{{ $employeedata->count() }}</span> entries
+                </div>
+                <div id="paginationControls" class="flex items-center gap-2">
+                    <!-- Pagination buttons will be generated by JavaScript -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -241,9 +308,313 @@
         </div>
     </div>
 
+    @push('styles')
+    <style>
+        /* Table cell height and borders - matching My Stores structure */
+        table th,
+        table td {
+            height: 50px;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 24px;
+        }
+        
+        table tbody tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+    @endpush
+
     @push('scripts')
     <script>
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        // Client-side pagination, search, and sorting
+        let currentPage = 1;
+        let perPage = 10;
+        let allRows = [];
+        let filteredRows = [];
+        let sortColumn = null;
+        let sortDirection = 'asc'; // 'asc' or 'desc'
+
+        function initializePagination() {
+            const tbody = document.getElementById('rosterTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.roster-row'));
+            filteredRows = [...allRows];
+            
+            // Hide no rosters row if there are rosters
+            const noRostersRow = document.getElementById('noRostersRow');
+            if (noRostersRow && allRows.length > 0) {
+                noRostersRow.style.display = 'none';
+            }
+            
+            perPage = parseInt(document.getElementById('perPageSelect').value);
+            currentPage = 1;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Always refresh allRows from DOM to ensure valid references
+            const tbody = document.getElementById('rosterTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.roster-row'));
+            
+            // Filter rows based on search
+            const searchTerm = document.getElementById('searchbox')?.value.toLowerCase() || '';
+            
+            if (searchTerm) {
+                filteredRows = allRows.filter(row => {
+                    const text = row.textContent.toLowerCase();
+                    return text.includes(searchTerm);
+                });
+            } else {
+                filteredRows = [...allRows];
+            }
+
+            // Sort rows if a sort column is selected
+            if (sortColumn) {
+                filteredRows.sort((a, b) => {
+                    const aValue = a.getAttribute(`data-${sortColumn}`) || '';
+                    const bValue = b.getAttribute(`data-${sortColumn}`) || '';
+                    
+                    // Handle numeric values for total hours
+                    if (sortColumn === 'total') {
+                        const aNum = parseFloat(aValue) || 0;
+                        const bNum = parseFloat(bValue) || 0;
+                        return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+                    }
+                    
+                    // String comparison for employee name
+                    if (aValue < bValue) {
+                        return sortDirection === 'asc' ? -1 : 1;
+                    }
+                    if (aValue > bValue) {
+                        return sortDirection === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredRows.length / perPage);
+            const start = (currentPage - 1) * perPage;
+            const end = Math.min(start + perPage, filteredRows.length);
+
+            // Reorder rows in DOM if sorted
+            if (sortColumn && filteredRows.length > 0) {
+                const noRostersRow = document.getElementById('noRostersRow');
+                
+                // Remove all roster rows from DOM (they'll be re-added in sorted order)
+                allRows.forEach(row => {
+                    if (row.id !== 'noRostersRow') {
+                        row.remove();
+                    }
+                });
+                
+                // Insert sorted rows in correct order
+                filteredRows.forEach(row => {
+                    if (row.id !== 'noRostersRow') {
+                        if (noRostersRow && noRostersRow.parentNode) {
+                            tbody.insertBefore(row, noRostersRow);
+                        } else {
+                            tbody.appendChild(row);
+                        }
+                    }
+                });
+                
+                // Update allRows and filteredRows after DOM reordering
+                allRows = Array.from(tbody.querySelectorAll('tr.roster-row'));
+                // Rebuild filteredRows from allRows in sorted order
+                const sortedFilteredIndices = filteredRows.map(row => row.getAttribute('data-row-index'));
+                const newFilteredRows = [];
+                allRows.forEach(row => {
+                    const rowIndex = row.getAttribute('data-row-index');
+                    if (sortedFilteredIndices.includes(rowIndex)) {
+                        newFilteredRows.push(row);
+                    }
+                });
+                filteredRows = newFilteredRows;
+            }
+
+            // Hide all rows first
+            allRows.forEach(row => {
+                if (row.id !== 'noRostersRow') {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Show/hide no rosters message
+            const noRostersRow = document.getElementById('noRostersRow');
+            if (noRostersRow) {
+                if (filteredRows.length === 0) {
+                    noRostersRow.style.display = '';
+                } else {
+                    noRostersRow.style.display = 'none';
+                }
+            }
+
+            // Show rows for current page
+            for (let i = start; i < end; i++) {
+                if (filteredRows[i] && filteredRows[i].id !== 'noRostersRow') {
+                    filteredRows[i].style.display = '';
+                }
+            }
+
+            // Update pagination info
+            document.getElementById('showingStart').textContent = filteredRows.length === 0 ? 0 : start + 1;
+            document.getElementById('showingEnd').textContent = end;
+            document.getElementById('totalEntries').textContent = filteredRows.length;
+
+            // Generate pagination controls
+            generatePaginationControls(totalPages);
+        }
+
+        function generatePaginationControls(totalPages) {
+            const paginationDiv = document.getElementById('paginationControls');
+            paginationDiv.innerHTML = '';
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Previous';
+            prevBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === 1 ? ' opacity-50 cursor-not-allowed' : '');
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(prevBtn);
+
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                firstBtn.onclick = () => {
+                    currentPage = 1;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(firstBtn);
+
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md ' + 
+                    (i === currentPage ? 'bg-gray-800 text-white' : 'hover:bg-gray-100');
+                pageBtn.onclick = () => {
+                    currentPage = i;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                lastBtn.onclick = () => {
+                    currentPage = totalPages;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(lastBtn);
+            }
+
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next';
+            nextBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === totalPages ? ' opacity-50 cursor-not-allowed' : '');
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(nextBtn);
+        }
+
+        function sortTable(column) {
+            // If clicking the same column, toggle direction
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            // Update sort indicators - reset all to default sort icon
+            document.querySelectorAll('.sortable .sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '<i class="fas fa-sort text-gray-400"></i>';
+            });
+
+            // Update the active column's sort indicator
+            const clickedHeader = document.querySelector(`th[data-sort="${column}"]`);
+            if (clickedHeader) {
+                const indicator = clickedHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = sortDirection === 'asc' 
+                        ? '<i class="fas fa-sort-up text-gray-800"></i>' 
+                        : '<i class="fas fa-sort-down text-gray-800"></i>';
+                }
+            }
+
+            currentPage = 1; // Reset to first page when sorting
+            updateDisplay();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePagination();
+
+            // Search functionality
+            document.getElementById('searchbox')?.addEventListener('keyup', function() {
+                currentPage = 1; // Reset to first page on search
+                updateDisplay();
+            });
+
+            // Per page change
+            document.getElementById('perPageSelect')?.addEventListener('change', function() {
+                perPage = parseInt(this.value);
+                currentPage = 1;
+                updateDisplay();
+            });
+
+            // Sort functionality - attach click handlers to sortable headers
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.getAttribute('data-sort');
+                    if (column) {
+                        sortTable(column);
+                    }
+                });
+            });
+        });
         
         // Sync start/end time changes
         days.forEach(day => {
@@ -324,8 +695,86 @@
         }
 
         function getRosterData(employeeid) {
-            // This will be implemented when we create the edit view
-            window.location.href = '{{ route("storeowner.roster.edit", ":id") }}'.replace(':id', btoa(employeeid));
+            const formData = new FormData();
+            formData.append('employeeid', employeeid);
+            formData.append('modelname', 'index');
+            formData.append('_token', '{{ csrf_token() }}');
+
+            fetch("{{ route('storeowner.ajax.get-roster-template-data') }}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Remove any existing modal first
+                const existingModal = document.getElementById('editRosterTemplateModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Create a container div and append modal HTML to body
+                const tempContainer = document.createElement('div');
+                tempContainer.innerHTML = data;
+                document.body.appendChild(tempContainer);
+                
+                // Get the modal element
+                const modalElement = document.getElementById('editRosterTemplateModal');
+                if (modalElement) {
+                    // Show modal by removing hidden class
+                    modalElement.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    
+                    // Re-run the script to attach event listeners
+                    const scripts = tempContainer.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        if (script.src) {
+                            newScript.src = script.src;
+                        } else {
+                            newScript.textContent = script.textContent;
+                        }
+                        document.body.appendChild(newScript);
+                    });
+
+                    // Handle form submission
+                    const form = document.getElementById('editRosterTemplateForm');
+                    if (form) {
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const submitForm = new FormData(form);
+                            fetch(form.action, {
+                                method: 'POST',
+                                body: submitForm,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                }
+                            })
+                            .then(response => {
+                                if (response.redirected) {
+                                    window.location.href = response.url;
+                                } else {
+                                    return response.text().then(html => {
+                                        // If form submission was successful, reload the page
+                                        window.location.reload();
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error submitting form:', error);
+                                alert('Error saving roster. Please try again.');
+                            });
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading roster edit form:', error);
+                alert('Error loading roster edit form. Please try again.');
+            });
         }
     </script>
     @endpush

@@ -36,52 +36,93 @@
 
     <div class="py-4">
         <div class="mx-auto sm:px-6 lg:px-8">
-            <!-- Action Buttons -->
-            <div class="mb-4">
+            <!-- Header with Add Button -->
+            <div class="flex justify-between items-center mb-2">
+                <h1 class="text-2xl font-semibold text-gray-800"></h1>
                 <a href="{{ route('storeowner.suppliers.add') }}" 
-                   class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
-                    <i class="fas fa-plus-square mr-2"></i> Add Supplier
+                   class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
+                    <i class="fas fa-plus mr-2"></i>
+                    Add Supplier
                 </a>
             </div>
 
-            <!-- Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800">Suppliers</h3>
+            <!-- Search and Per Page Controls -->
+            <div class="mb-4 flex justify-between items-center flex-wrap gap-4">
+                <div class="flex items-center gap-2">
+                    <input type="text" 
+                           id="searchbox"
+                           placeholder="Search suppliers..." 
+                           class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm">
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200" id="table-report">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Phone</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Mobile</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Email</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Representative</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @if($storeSuppliers->count() > 0)
-                                @foreach($storeSuppliers as $supplier)
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <a href="{{ route('storeowner.products.by-supplier', base64_encode($supplier->supplierid)) }}" class="text-blue-600 hover:text-blue-800" title="{{ $supplier->supplier_name }}">
+                
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-700">Show:</label>
+                    <select id="perPageSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 min-w-[68px] text-sm">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="text-sm text-gray-700">entries</span>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table id="table-new" class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="name" style="cursor: pointer;">
+                                        Supplier Name <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="phone" style="cursor: pointer;">
+                                        Supplier Phone <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="mobile" style="cursor: pointer;">
+                                        Supplier Mobile <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="email" style="cursor: pointer;">
+                                        Supplier Email <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="rep" style="cursor: pointer;">
+                                        Supplier Representative <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="status" style="cursor: pointer;">
+                                        Status <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="supplierTableBody">
+                                @forelse ($storeSuppliers as $supplier)
+                                    <tr class="supplier-row hover:bg-gray-50" 
+                                        data-row-index="{{ $loop->index }}"
+                                        data-name="{{ strtolower($supplier->supplier_name) }}"
+                                        data-phone="{{ strtolower($supplier->supplier_phone ?? '') }}"
+                                        data-mobile="{{ strtolower($supplier->supplier_phone2 ?? '') }}"
+                                        data-email="{{ strtolower($supplier->supplier_email ?? '') }}"
+                                        data-rep="{{ strtolower($supplier->supplier_rep ?? '') }}"
+                                        data-status="{{ strtolower($supplier->status) }}">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <a href="{{ route('storeowner.products.by-supplier', base64_encode($supplier->supplierid)) }}" class="text-sm font-medium text-blue-600 hover:text-blue-800" title="{{ $supplier->supplier_name }}">
                                                 {{ $supplier->supplier_name }}
                                             </a>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title="{{ $supplier->supplier_phone }}">
-                                            {{ $supplier->supplier_phone }}
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900" title="{{ $supplier->supplier_phone }}">{{ $supplier->supplier_phone }}</div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title="{{ $supplier->supplier_phone2 }}">
-                                            {{ $supplier->supplier_phone2 ?? '-' }}
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900" title="{{ $supplier->supplier_phone2 }}">{{ $supplier->supplier_phone2 ?? '-' }}</div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title="{{ $supplier->supplier_email }}">
-                                            {{ $supplier->supplier_email }}
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900" title="{{ $supplier->supplier_email }}">{{ $supplier->supplier_email }}</div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title="{{ $supplier->supplier_rep }}">
-                                            {{ $supplier->supplier_rep }}
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900" title="{{ $supplier->supplier_rep }}">{{ $supplier->supplier_rep }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                             @if($supplier->status == 'Enable')
@@ -98,35 +139,44 @@
                                                 </a>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                                            <a href="{{ route('storeowner.suppliers.edit', base64_encode($supplier->supplierid)) }}" 
-                                               class="text-blue-600 hover:text-blue-800 mr-3" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="#" 
-                                               onclick="event.preventDefault(); openDeleteModal('{{ base64_encode($supplier->supplierid) }}')"
-                                               class="text-red-600 hover:text-red-800" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div class="flex space-x-3">
+                                                <!-- Edit -->
+                                                <a href="{{ route('storeowner.suppliers.edit', base64_encode($supplier->supplierid)) }}" 
+                                                   class="text-gray-600 hover:text-gray-900" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <!-- Delete -->
+                                                <a href="#" 
+                                                   onclick="event.preventDefault(); openDeleteModal('{{ base64_encode($supplier->supplierid) }}')"
+                                                   class="text-red-600 hover:text-red-900" 
+                                                   title="Delete">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
-                                @endforeach
-                            @else
-                                <tr>
-                                    <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
-                                        No suppliers found.
-                                    </td>
-                                </tr>
-                            @endif
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination -->
-                @if($storeSuppliers->hasPages())
-                    <div class="px-6 py-4 border-t border-gray-200">
-                        {{ $storeSuppliers->links() }}
+                                @empty
+                                    <tr id="noSuppliersRow">
+                                        <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                                            No suppliers found.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
-                @endif
+                    
+                    <!-- Client-side Pagination -->
+                    <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Showing <span id="showingStart">1</span> to <span id="showingEnd">10</span> of <span id="totalEntries">{{ $storeSuppliers->count() }}</span> entries
+                        </div>
+                        <div id="paginationControls" class="flex items-center gap-2">
+                            <!-- Pagination buttons will be generated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
             </div>
             <!-- Legend -->
             <!-- <div class="mt-4 text-sm">
@@ -205,8 +255,305 @@
         </div>
     </div>
 
+    @push('styles')
+    <style>
+        /* Table cell height and borders - matching My Stores structure */
+        table th,
+        table td {
+            height: 50px;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 24px;
+        }
+        
+        table tbody tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+    @endpush
+
     @push('scripts')
     <script>
+        // Client-side pagination, search, and sorting
+        let currentPage = 1;
+        let perPage = 10;
+        let allRows = [];
+        let filteredRows = [];
+        let sortColumn = null;
+        let sortDirection = 'asc'; // 'asc' or 'desc'
+
+        function initializePagination() {
+            const tbody = document.getElementById('supplierTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.supplier-row'));
+            filteredRows = [...allRows];
+            
+            // Hide no suppliers row if there are suppliers
+            const noSuppliersRow = document.getElementById('noSuppliersRow');
+            if (noSuppliersRow && allRows.length > 0) {
+                noSuppliersRow.style.display = 'none';
+            }
+            
+            perPage = parseInt(document.getElementById('perPageSelect').value);
+            currentPage = 1;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Always refresh allRows from DOM to ensure valid references
+            const tbody = document.getElementById('supplierTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.supplier-row'));
+            
+            // Filter rows based on search
+            const searchTerm = document.getElementById('searchbox')?.value.toLowerCase() || '';
+            
+            if (searchTerm) {
+                filteredRows = allRows.filter(row => {
+                    const text = row.textContent.toLowerCase();
+                    return text.includes(searchTerm);
+                });
+            } else {
+                filteredRows = [...allRows];
+            }
+
+            // Sort rows if a sort column is selected
+            if (sortColumn) {
+                filteredRows.sort((a, b) => {
+                    const aValue = a.getAttribute(`data-${sortColumn}`) || '';
+                    const bValue = b.getAttribute(`data-${sortColumn}`) || '';
+                    
+                    // String comparison
+                    if (aValue < bValue) {
+                        return sortDirection === 'asc' ? -1 : 1;
+                    }
+                    if (aValue > bValue) {
+                        return sortDirection === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredRows.length / perPage);
+            const start = (currentPage - 1) * perPage;
+            const end = Math.min(start + perPage, filteredRows.length);
+
+            // Reorder rows in DOM if sorted
+            if (sortColumn && filteredRows.length > 0) {
+                const noSuppliersRow = document.getElementById('noSuppliersRow');
+                
+                // Remove all supplier rows from DOM (they'll be re-added in sorted order)
+                allRows.forEach(row => {
+                    if (row.id !== 'noSuppliersRow') {
+                        row.remove();
+                    }
+                });
+                
+                // Insert sorted rows in correct order
+                filteredRows.forEach(row => {
+                    if (row.id !== 'noSuppliersRow') {
+                        if (noSuppliersRow && noSuppliersRow.parentNode) {
+                            tbody.insertBefore(row, noSuppliersRow);
+                        } else {
+                            tbody.appendChild(row);
+                        }
+                    }
+                });
+                
+                // Update allRows and filteredRows after DOM reordering
+                allRows = Array.from(tbody.querySelectorAll('tr.supplier-row'));
+                // Rebuild filteredRows from allRows in sorted order
+                const sortedFilteredIndices = filteredRows.map(row => row.getAttribute('data-row-index'));
+                const newFilteredRows = [];
+                allRows.forEach(row => {
+                    const rowIndex = row.getAttribute('data-row-index');
+                    if (sortedFilteredIndices.includes(rowIndex)) {
+                        newFilteredRows.push(row);
+                    }
+                });
+                filteredRows = newFilteredRows;
+            }
+
+            // Hide all rows first
+            allRows.forEach(row => {
+                if (row.id !== 'noSuppliersRow') {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Show/hide no suppliers message
+            const noSuppliersRow = document.getElementById('noSuppliersRow');
+            if (noSuppliersRow) {
+                if (filteredRows.length === 0) {
+                    noSuppliersRow.style.display = '';
+                } else {
+                    noSuppliersRow.style.display = 'none';
+                }
+            }
+
+            // Show rows for current page
+            for (let i = start; i < end; i++) {
+                if (filteredRows[i] && filteredRows[i].id !== 'noSuppliersRow') {
+                    filteredRows[i].style.display = '';
+                }
+            }
+
+            // Update pagination info
+            document.getElementById('showingStart').textContent = filteredRows.length === 0 ? 0 : start + 1;
+            document.getElementById('showingEnd').textContent = end;
+            document.getElementById('totalEntries').textContent = filteredRows.length;
+
+            // Generate pagination controls
+            generatePaginationControls(totalPages);
+        }
+
+        function generatePaginationControls(totalPages) {
+            const paginationDiv = document.getElementById('paginationControls');
+            paginationDiv.innerHTML = '';
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Previous';
+            prevBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === 1 ? ' opacity-50 cursor-not-allowed' : '');
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(prevBtn);
+
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                firstBtn.onclick = () => {
+                    currentPage = 1;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(firstBtn);
+
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md ' + 
+                    (i === currentPage ? 'bg-gray-800 text-white' : 'hover:bg-gray-100');
+                pageBtn.onclick = () => {
+                    currentPage = i;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                lastBtn.onclick = () => {
+                    currentPage = totalPages;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(lastBtn);
+            }
+
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next';
+            nextBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === totalPages ? ' opacity-50 cursor-not-allowed' : '');
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(nextBtn);
+        }
+
+        function sortTable(column) {
+            // If clicking the same column, toggle direction
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            // Update sort indicators - reset all to default sort icon
+            document.querySelectorAll('.sortable .sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '<i class="fas fa-sort text-gray-400"></i>';
+            });
+
+            // Update the active column's sort indicator
+            const clickedHeader = document.querySelector(`th[data-sort="${column}"]`);
+            if (clickedHeader) {
+                const indicator = clickedHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = sortDirection === 'asc' 
+                        ? '<i class="fas fa-sort-up text-gray-800"></i>' 
+                        : '<i class="fas fa-sort-down text-gray-800"></i>';
+                }
+            }
+
+            currentPage = 1; // Reset to first page when sorting
+            updateDisplay();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePagination();
+
+            // Search functionality
+            document.getElementById('searchbox')?.addEventListener('keyup', function() {
+                currentPage = 1; // Reset to first page on search
+                updateDisplay();
+            });
+
+            // Per page change
+            document.getElementById('perPageSelect')?.addEventListener('change', function() {
+                perPage = parseInt(this.value);
+                currentPage = 1;
+                updateDisplay();
+            });
+
+            // Sort functionality - attach click handlers to sortable headers
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.getAttribute('data-sort');
+                    if (column) {
+                        sortTable(column);
+                    }
+                });
+            });
+        });
+
         function openStatusModal(supplierid, currentStatus) {
             const modal = document.getElementById('statusModal');
             const form = document.getElementById('statusForm');

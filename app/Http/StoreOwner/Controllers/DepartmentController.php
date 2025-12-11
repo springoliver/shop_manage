@@ -16,22 +16,24 @@ class DepartmentController extends Controller
     /**
      * Display a listing of the departments.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
         $user = auth('storeowner')->user();
         $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
         
         // Get departments for current store OR global (storeid = 0)
         // Similar to CI's get_all_department method
-        $departments = DB::table('stoma_store_department as d')
+        $query = DB::table('stoma_store_department as d')
             ->leftJoin('stoma_storetype as st', 'st.typeid', '=', 'd.storetypeid')
-            ->where(function($query) use ($storeid) {
-                $query->where('d.storeid', $storeid)
-                      ->orWhere('d.storeid', 0);
-            })
-            ->select('d.*', 'st.typeid', 'st.store_type')
-            ->orderBy('d.departmentid', 'DESC')
-            ->get()
+            ->where(function($q) use ($storeid) {
+                $q->where('d.storeid', $storeid)
+                  ->orWhere('d.storeid', 0);
+            });
+        
+        $query->select('d.*', 'st.typeid', 'st.store_type')
+            ->orderBy('d.departmentid', 'DESC');
+        
+        $departments = $query->get()
             ->map(function($item) {
                 return (object) [
                     'departmentid' => $item->departmentid,

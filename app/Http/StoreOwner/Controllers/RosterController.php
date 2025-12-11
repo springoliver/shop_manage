@@ -5,6 +5,8 @@ namespace App\Http\StoreOwner\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Roster;
 use App\Models\WeekRoster;
+use App\Models\Week;
+use App\Models\Year;
 use App\Models\StoreEmployee;
 use App\Models\Department;
 use App\Services\StoreOwner\RosterService;
@@ -12,6 +14,7 @@ use App\Services\StoreOwner\ModuleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class RosterController extends Controller
@@ -45,7 +48,7 @@ class RosterController extends Controller
     /**
      * Display a listing of base rosters.
      */
-    public function index(): View|\Illuminate\Http\RedirectResponse
+    public function index(Request $request): View|\Illuminate\Http\RedirectResponse
     {
         $moduleCheck = $this->checkModuleAccess();
         if ($moduleCheck) {
@@ -58,16 +61,33 @@ class RosterController extends Controller
         // Get employees without rosters
         $employees = $this->rosterService->getEmployeesWithoutRoster($storeid);
         
-        // Get all base rosters
-        $weekroster = $this->rosterService->getAllRosters($storeid);
+        // Get all unique employees who have rosters (for client-side pagination)
+        $employeedata = DB::table('stoma_roster as r')
+            ->join('stoma_employee as e', 'e.employeeid', '=', 'r.employeeid')
+            ->where('r.storeid', $storeid)
+            ->where('e.status', '!=', 'Deactivate')
+            ->select('e.employeeid', 'e.firstname', 'e.lastname')
+            ->distinct()
+            ->orderBy('e.firstname', 'asc')
+            ->get()
+            ->map(function($item) {
+                return (object) [
+                    'employeeid' => $item->employeeid,
+                    'firstname' => $item->firstname,
+                    'lastname' => $item->lastname,
+                ];
+            });
         
-        // Get unique employees who have rosters
-        $employeedata = $weekroster->unique('employeeid')
-            ->map(function ($roster) {
-                return $roster->employee;
-            })
-            ->filter()
-            ->values();
+        // Get employee IDs
+        $employeeIds = $employeedata->pluck('employeeid')->toArray();
+        
+        // Get all rosters for these employees
+        $weekroster = Roster::where('storeid', $storeid)
+            ->whereIn('employeeid', $employeeIds)
+            ->with(['employee' => function ($query) {
+                $query->where('status', '!=', 'Deactivate');
+            }])
+            ->get();
         
         // Get departments
         $departments = Department::where('storeid', $storeid)
@@ -369,7 +389,7 @@ class RosterController extends Controller
         foreach ($employeeIds as $employeeId) {
             $firstRoster = $weekroster->where('employeeid', $employeeId)->first();
             if ($firstRoster && $firstRoster->employee) {
-                $employees->push([$firstRoster->employee]);
+                $employees->push($firstRoster->employee);
             }
         }
         
@@ -409,120 +429,43 @@ class RosterController extends Controller
     }
 
     /**
-     * Edit weekly roster for a specific employee and week.
+     * View weekly roster for a specific week (or current week if no weekid provided).
      */
-    public function editweekroster(string $employeeid, string $weekid): View|\Illuminate\Http\RedirectResponse
+    public function viewweekroster(?string $weekid = null): View|\Illuminate\Http\RedirectResponse
     {
         $moduleCheck = $this->checkModuleAccess();
         if ($moduleCheck) {
             return $moduleCheck;
         }
         
-        $employeeid = base64_decode($employeeid);
-        $weekid = (int) base64_decode($weekid);
-        
-        $employee = StoreEmployee::findOrFail($employeeid);
-        
         $user = Auth::guard('storeowner')->user();
         $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
         
-        // Get week roster entries for this employee and week
-        $weekRosters = WeekRoster::where('employeeid', $employeeid)
-            ->where('weekid', $weekid)
-            ->where('storeid', $storeid)
-            ->get()
-            ->keyBy('day');
-        
-        $week = \App\Models\Week::find($weekid);
-        
-        return view('storeowner.roster.editweekroster', compact('employee', 'weekRosters', 'week'));
-    }
-
-    /**
-     * Update weekly roster.
-     */
-    public function updateweekroster(Request $request, string $employeeid, string $weekid): RedirectResponse
-    {
-        $moduleCheck = $this->checkModuleAccess();
-        if ($moduleCheck) {
-            return $moduleCheck;
-        }
-        
-        $employeeid = base64_decode($employeeid);
-        $weekid = (int) base64_decode($weekid);
-        
-        $employee = StoreEmployee::findOrFail($employeeid);
-        
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
-        
-        $validated = $request->validate([
-            'Sunday_start' => 'required',
-            'Sunday_end' => 'required',
-            'Monday_start' => 'required',
-            'Monday_end' => 'required',
-            'Tuesday_start' => 'required',
-            'Tuesday_end' => 'required',
-            'Wednesday_start' => 'required',
-            'Wednesday_end' => 'required',
-            'Thursday_start' => 'required',
-            'Thursday_end' => 'required',
-            'Friday_start' => 'required',
-            'Friday_end' => 'required',
-            'Saturday_start' => 'required',
-            'Saturday_end' => 'required',
-        ]);
-        
-        $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
-        foreach ($days as $day) {
-            $startKey = $day . '_start';
-            $endKey = $day . '_end';
-            $startTime = $validated[$startKey];
-            $endTime = $validated[$endKey];
+        if ($weekid) {
+            $weekid = (int) base64_decode($weekid);
+            $week = Week::findOrFail($weekid);
+        } else {
+            // Get current week
+            $date = date('Y-m-d');
+            $weeknumber = (int) date('W');
+            $year = (int) date('Y');
             
-            $weekRoster = WeekRoster::where('employeeid', $employeeid)
-                ->where('weekid', $weekid)
-                ->where('storeid', $storeid)
-                ->where('day', $day)
-                ->first();
-            
-            if ($weekRoster) {
-                $workStatus = ($startTime === 'off' || $endTime === 'off') ? 'off' : 'on';
-                
-                $weekRoster->update([
-                    'start_time' => $workStatus === 'off' ? '00:00:00' : date('H:i:s', strtotime($startTime)),
-                    'end_time' => $workStatus === 'off' ? '00:00:00' : date('H:i:s', strtotime($endTime)),
-                    'work_status' => $workStatus,
-                    'editdatetime' => now(),
-                    'break_every_hrs' => $employee->break_every_hrs ?? 1,
-                    'break_min' => $employee->break_min ?? 4,
-                    'paid_break' => $employee->paid_break ?? 'Yes',
-                ]);
-                
-                // TODO: Update emp_payroll entry with calculated hours
+            $yearModel = Year::where('year', $year)->first();
+            if ($yearModel) {
+                $week = Week::where('weeknumber', $weeknumber)
+                    ->where('yearid', $yearModel->yearid)
+                    ->first();
+            } else {
+                $week = null;
             }
+            
+            if (!$week) {
+                return redirect()->route('storeowner.roster.weekroster')
+                    ->with('error', 'No roster found for current week. Please generate a week roster first.');
+            }
+            
+            $weekid = $week->weekid;
         }
-        
-        return redirect()->route('storeowner.roster.viewweekroster', ['weekid' => base64_encode($weekid)])
-            ->with('success', 'Weekly roster updated successfully.');
-    }
-
-    /**
-     * View weekly roster for a specific week.
-     */
-    public function viewweekroster(string $weekid): View|\Illuminate\Http\RedirectResponse
-    {
-        $moduleCheck = $this->checkModuleAccess();
-        if ($moduleCheck) {
-            return $moduleCheck;
-        }
-        
-        $weekid = (int) base64_decode($weekid);
-        $week = \App\Models\Week::findOrFail($weekid);
-        
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
         
         $weekRosters = $this->rosterService->getWeekRosters($storeid, $weekid);
         
@@ -596,6 +539,461 @@ class RosterController extends Controller
             ->get();
         
         return view('storeowner.roster.rosterforweek', compact('week', 'rostersByEmployee', 'departments', 'departmentid'));
+    }
+
+    /**
+     * Print view of current week's roster.
+     */
+    public function printviewroster(): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        
+        $date = date('Y-m-d');
+        $weeknumber = (int) date('W');
+        $year = (int) date('Y');
+        
+        $yearModel = Year::where('year', $year)->first();
+        if ($yearModel) {
+            $week = Week::where('weeknumber', $weeknumber)
+                ->where('yearid', $yearModel->yearid)
+                ->first();
+        } else {
+            $week = null;
+        }
+        
+        $weekRosters = collect();
+        $employees = collect();
+        
+        if ($week) {
+            $weekRosters = WeekRoster::where('storeid', $storeid)
+                ->where('weekid', $week->weekid)
+                ->with(['employee' => function($q) {
+                    $q->where('status', '!=', 'Deactivate');
+                }])
+                ->whereHas('employee', function($q) {
+                    $q->where('status', '!=', 'Deactivate');
+                })
+                ->get();
+            
+            $employeeIds = $weekRosters->pluck('employeeid')->unique();
+            $employees = StoreEmployee::whereIn('employeeid', $employeeIds)
+                ->where('status', 'Active')
+                ->get();
+        }
+        
+        $rostersByEmployee = $weekRosters->groupBy('employeeid');
+        
+        return view('storeowner.roster.printviewroster', compact('weeknumber', 'year', 'rostersByEmployee', 'employees', 'date'));
+    }
+
+    /**
+     * Search and print roster for a specific week.
+     */
+    public function searchprintroster(Request $request): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        // Handle GET request (show initial form)
+        if ($request->isMethod('GET')) {
+            $weeknumber = 0;
+            $year = (int) date('Y');
+            $rostersByEmployee = collect();
+            $employees = collect();
+            $totalHours = [];
+            $dateofbirth = date('Y-m-d');
+            
+            return view('storeowner.roster.searchprintroster', compact('weeknumber', 'year', 'rostersByEmployee', 'employees', 'totalHours', 'dateofbirth'));
+        }
+        
+        // Handle POST request (process search)
+        $validated = $request->validate([
+            'dateofbirth' => 'required|date',
+        ]);
+        
+        $dateofbirth = $validated['dateofbirth'];
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        
+        $date = new \DateTime($dateofbirth);
+        $weeknumber = (int) $date->format('W');
+        $year = (int) $date->format('Y');
+        
+        $yearModel = Year::where('year', $year)->first();
+        if ($yearModel) {
+            $week = Week::where('weeknumber', $weeknumber)
+                ->where('yearid', $yearModel->yearid)
+                ->first();
+        } else {
+            $week = null;
+        }
+        
+        $weekRosters = collect();
+        $employees = collect();
+        $totalHours = [];
+        
+        if ($week) {
+            $weekRosters = WeekRoster::where('storeid', $storeid)
+                ->where('weekid', $week->weekid)
+                ->with(['employee' => function($q) {
+                    $q->where('status', '!=', 'Deactivate');
+                }])
+                ->whereHas('employee', function($q) {
+                    $q->where('status', '!=', 'Deactivate');
+                })
+                ->get();
+            
+            $employeeIds = $weekRosters->pluck('employeeid')->unique();
+            $employees = StoreEmployee::whereIn('employeeid', $employeeIds)
+                ->where('status', 'Active')
+                ->get();
+            
+            // Calculate total hours per employee from roster entries
+            foreach ($employeeIds as $empId) {
+                $employeeRosters = $weekRosters->where('employeeid', $empId);
+                $total = 0;
+                foreach ($employeeRosters as $roster) {
+                    if ($roster->start_time != '00:00:00' && $roster->end_time != '00:00:00') {
+                        $start = strtotime($roster->start_time);
+                        $end = strtotime($roster->end_time);
+                        $diff = ($end - $start) / 3600; // Convert seconds to hours
+                        $total += $diff;
+                    }
+                }
+                $totalHours[$empId] = round($total, 2);
+            }
+        }
+        
+        $rostersByEmployee = $weekRosters->groupBy('employeeid');
+        
+        return view('storeowner.roster.searchprintroster', compact('weeknumber', 'year', 'rostersByEmployee', 'employees', 'totalHours', 'dateofbirth'));
+    }
+
+    /**
+     * Search weekly roster by week.
+     */
+    public function searchweekroster(Request $request): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        // Accept both date formats (yyyy-mm-dd or dd-mm-yyyy) like CI
+        $dateInput = $request->input('dateofbirth');
+        
+        // If no date provided (GET request), show the search form with today's date
+        if (!$dateInput) {
+            $dateInput = date('d-m-Y');
+            $week = null;
+            $weeknumber = null;
+            $year = date('Y');
+            $weekRosters = collect();
+            $rostersByEmployee = collect();
+            $totalHours = [];
+            
+            return view('storeowner.roster.rosterforweek', compact('week', 'rostersByEmployee', 'weeknumber', 'year', 'totalHours', 'dateInput'));
+        }
+        
+        // Parse the date - handle both yyyy-mm-dd (HTML5) and dd-mm-yyyy (CI) formats
+        try {
+            // Try yyyy-mm-dd format first (HTML5 date input)
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateInput)) {
+                $date = new \DateTime($dateInput);
+            } else {
+                // Try dd-mm-yyyy format (CI format)
+                $date = \DateTime::createFromFormat('d-m-Y', $dateInput);
+                if (!$date) {
+                    throw new \Exception('Invalid date format');
+                }
+            }
+        } catch (\Exception $e) {
+            return redirect()->route('storeowner.roster.searchweekroster')
+                ->with('error', 'Invalid date format. Please use dd-mm-yyyy or yyyy-mm-dd format.');
+        }
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+
+        $weeknumber = (int) $date->format('W');
+        $year = (int) $date->format('Y');
+        
+        // Get or create year
+        $yearModel = Year::where('year', $year)->first();
+        if (!$yearModel) {
+            // Create year if it doesn't exist
+            $yearModel = Year::create(['year' => $year]);
+        }
+        
+        // Get week by weeknumber and yearid (like CI's get_weekid)
+        $weekResult = Week::where('weeknumber', $weeknumber)
+            ->where('yearid', $yearModel->yearid)
+            ->first();
+        
+        $weekid = $weekResult ? $weekResult->weekid : null;
+        $week = $weekResult;
+        
+        $weekRosters = collect();
+        $rostersByEmployee = collect();
+        $employees = [];
+        $totalHours = [];
+        
+        if ($weekid) {
+            // Get week rosters for this week (like CI's get_edit_weekroster)
+            $weekRosters = WeekRoster::where('storeid', $storeid)
+                ->where('weekid', $weekid)
+                ->with(['employee' => function($q) {
+                    $q->where('status', '!=', 'Deactivate');
+                }])
+                ->whereHas('employee', function($q) {
+                    $q->where('status', '!=', 'Deactivate');
+                })
+                ->get();
+            
+            // Get employees who already have rosters (for display table)
+            $employeeIds = $weekRosters->pluck('employeeid')->unique();
+            foreach ($employeeIds as $empId) {
+                $employee = StoreEmployee::where('employeeid', $empId)
+                    ->where('status', '!=', 'Deactivate')
+                    ->first();
+                if ($employee) {
+                    $employees[] = $employee;
+                }
+            }
+            
+            // Group by employee
+            $rostersByEmployee = $weekRosters->groupBy('employeeid');
+            
+            // Calculate total hours per employee (like CI's get_totalhours)
+            foreach ($employees as $employee) {
+                $empId = $employee->employeeid;
+                $employeeRosters = $weekRosters->where('employeeid', $empId);
+                $total = 0;
+                foreach ($employeeRosters as $roster) {
+                    if ($roster->start_time != '00:00:00' && $roster->end_time != '00:00:00') {
+                        $start = strtotime($roster->start_time);
+                        $end = strtotime($roster->end_time);
+                        $diff = ($end - $start) / 3600; // Convert seconds to hours
+                        $total += ceil($diff); // Use ceil like CI line 138
+                    }
+                }
+                $totalHours[$empId] = $total;
+            }
+        }
+        
+        return view('storeowner.roster.rosterforweek', compact('week', 'weekid', 'rostersByEmployee', 'employees', 'weeknumber', 'year', 'totalHours', 'dateInput', 'weekRosters'));
+    }
+
+    /**
+     * Add or edit weekly roster (from Search & Edit form).
+     */
+    public function addeditweekroster(Request $request): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $validated = $request->validate([
+            'hdnweekid' => 'required|integer',
+            'employeeid' => 'required|string',
+            'Sunday_start' => 'required',
+            'Sunday_end' => 'required',
+            'Monday_start' => 'required',
+            'Monday_end' => 'required',
+            'Tuesday_start' => 'required',
+            'Tuesday_end' => 'required',
+            'Wednesday_start' => 'required',
+            'Wednesday_end' => 'required',
+            'Thursday_start' => 'required',
+            'Thursday_end' => 'required',
+            'Friday_start' => 'required',
+            'Friday_end' => 'required',
+            'Saturday_start' => 'required',
+            'Saturday_end' => 'required',
+        ]);
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        
+        // Parse employeeid - can be either direct ID or "employeeid||departmentid" format
+        $employeeid = $validated['employeeid'];
+        if (strpos($employeeid, '||') !== false) {
+            $employeeParts = explode('||', $employeeid);
+            $employeeid = $employeeParts[0];
+        }
+        $weekid = $validated['hdnweekid'];
+        
+        // Get employee data
+        $employee = StoreEmployee::where('employeeid', $employeeid)->first();
+        if (!$employee) {
+            return redirect()->back()
+                ->with('error', 'Employee not found.');
+        }
+        
+        // Check if roster already exists for this employee/week and delete it (like CI line 1048-1050)
+        $existingRosters = WeekRoster::where('storeid', $storeid)
+            ->where('employeeid', $employeeid)
+            ->where('weekid', $weekid)
+            ->get();
+        
+        if ($existingRosters->count() > 0) {
+            WeekRoster::where('storeid', $storeid)
+                ->where('employeeid', $employeeid)
+                ->where('weekid', $weekid)
+                ->delete();
+        }
+        
+        // Get week information to calculate dates
+        $week = \App\Models\Week::find($weekid);
+        if (!$week) {
+            return redirect()->back()
+                ->with('error', 'Week not found.');
+        }
+        
+        $yearModel = \App\Models\Year::find($week->yearid);
+        if (!$yearModel) {
+            return redirect()->back()
+                ->with('error', 'Year not found.');
+        }
+        
+        $weeknumber = $week->weeknumber;
+        $year = $yearModel->year;
+        
+        // Calculate dates for each day of the week (ISO week starts on Monday)
+        // Get the Monday of the ISO week
+        $monday = new \DateTime();
+        $monday->setISODate($year, $weeknumber, 1); // ISO week: 1 = Monday
+        
+        // Calculate dates for each day
+        $dayDates = [
+            'Monday' => $monday->format('Y-m-d'),
+            'Tuesday' => (clone $monday)->modify('+1 day')->format('Y-m-d'),
+            'Wednesday' => (clone $monday)->modify('+2 days')->format('Y-m-d'),
+            'Thursday' => (clone $monday)->modify('+3 days')->format('Y-m-d'),
+            'Friday' => (clone $monday)->modify('+4 days')->format('Y-m-d'),
+            'Saturday' => (clone $monday)->modify('+5 days')->format('Y-m-d'),
+            'Sunday' => (clone $monday)->modify('+6 days')->format('Y-m-d'),
+        ];
+        
+        // Create rosters for each day (like CI lines 1056-1290)
+        $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        foreach ($days as $day) {
+            $startKey = $day . '_start';
+            $endKey = $day . '_end';
+            $startTime = $validated[$startKey];
+            $endTime = $validated[$endKey];
+            
+            $workStatus = ($startTime === 'off' || $endTime === 'off') ? 'off' : 'on';
+            
+            WeekRoster::create([
+                'storeid' => $storeid,
+                'employeeid' => $employeeid,
+                'departmentid' => $employee->departmentid,
+                'weekid' => $weekid,
+                'day' => $day,
+                'day_date' => $dayDates[$day],
+                'start_time' => $workStatus === 'off' ? '00:00:00' : date('H:i:s', strtotime($startTime)),
+                'end_time' => $workStatus === 'off' ? '00:00:00' : date('H:i:s', strtotime($endTime)),
+                'break_every_hrs' => $employee->break_every_hrs ?? 0,
+                'break_min' => $employee->break_min ?? 0,
+                'paid_break' => $employee->paid_break ?? 'Yes',
+                'work_status' => $workStatus,
+                'insertdatetime' => now(),
+                'insertip' => $request->ip(),
+            ]);
+        }
+        
+        return redirect()->back()
+            ->with('success', 'Roster Edited Successfully.');
+    }
+
+    /**
+     * Email roster to all employees.
+     */
+    public function emailRoster(): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        
+        $date = date('Y-m-d');
+        $weeknumber = (int) date('W');
+        $year = (int) date('Y');
+        
+        $yearModel = Year::where('year', $year)->first();
+        if ($yearModel) {
+            $week = Week::where('weeknumber', $weeknumber)
+                ->where('yearid', $yearModel->yearid)
+                ->first();
+        } else {
+            $week = null;
+        }
+        
+        if (!$week) {
+            return redirect()->route('storeowner.roster.weekroster')
+                ->with('error', 'No roster found for current week.');
+        }
+        
+        $weekRosters = WeekRoster::where('storeid', $storeid)
+            ->where('weekid', $week->weekid)
+            ->with(['employee' => function($q) {
+                $q->where('status', '!=', 'Deactivate');
+            }])
+            ->whereHas('employee', function($q) {
+                $q->where('status', '!=', 'Deactivate');
+            })
+            ->get();
+        
+        // Group rosters by employee
+        $rostersByEmployee = $weekRosters->groupBy('employeeid');
+        
+        // Get store info
+        $store = \App\Models\Store::find($storeid);
+        $siteName = $store->storename ?? config('app.name');
+        $siteEmail = $store->store_email ?? config('mail.from.address');
+        
+        // Send email to each employee
+        foreach ($rostersByEmployee as $employeeId => $rosters) {
+            $employee = StoreEmployee::find($employeeId);
+            
+            if (!$employee || !$employee->emailid) {
+                continue;
+            }
+            
+            try {
+                \Illuminate\Support\Facades\Mail::send('storeowner.roster.email_roster', [
+                    'employee' => $employee,
+                    'my_roster' => $rosters,
+                    'weeknumber' => $weeknumber,
+                    'year' => $year,
+                    'sitename' => $siteName,
+                ], function($message) use ($employee, $siteEmail, $siteName) {
+                    $message->to($employee->emailid, $employee->firstname . ' ' . $employee->lastname)
+                        ->subject('Your Weekly Roster - ' . $siteName);
+                });
+            } catch (\Exception $e) {
+                // Log error but continue sending to other employees
+                \Log::error('Failed to send roster email to employee ' . $employeeId . ': ' . $e->getMessage());
+            }
+        }
+        
+        return redirect()->route('storeowner.roster.weekroster')
+            ->with('success', 'Roster emailed to all employees successfully.');
     }
 }
 

@@ -28,18 +28,32 @@
     </div>
 
     <!-- Navigation Buttons -->
-    <div class="mb-4 flex flex-wrap gap-2">
-        <a href="{{ route('storeowner.roster.index') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+    <div class="mb-2 flex flex-wrap gap-2">
+        <a href="{{ route('storeowner.roster.index') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
             Roster Template
         </a>
-        <a href="{{ route('storeowner.roster.viewweekroster', base64_encode($week->weekid ?? 0)) }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+        <a href="{{ route('storeowner.roster.viewweekroster') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
             Current Roster
         </a>
+        <form action="{{ route('storeowner.roster.searchweekroster') }}" method="POST" class="inline">
+            @csrf
+            <input type="hidden" name="dateofbirth" value="{{ date('Y-m-d') }}">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+                Search & Edit
+            </button>
+        </form>
+        <a href="javascript:void(0);" onclick="document.getElementById('searchPrintForm').submit();" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Search & Print
+        </a>
+        <form id="searchPrintForm" action="{{ route('storeowner.roster.searchprintroster') }}" method="POST" class="hidden">
+            @csrf
+            <input type="hidden" name="dateofbirth" value="{{ date('Y-m-d') }}">
+        </form>
     </div>
 
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold text-gray-800">Current Roster</h1>
+        <h1 class="text-2xl font-semibold text-gray-800"></h1>
         <a href="{{ route('storeowner.roster.weekroster') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700">
             <i class="fas fa-plus mr-2"></i>
             Add

@@ -15,7 +15,7 @@ class UserGroupController extends Controller
     /**
      * Display a listing of the user groups.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
         $user = auth('storeowner')->user();
         $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
@@ -25,26 +25,31 @@ class UserGroupController extends Controller
         } else {
             // Get user groups from store_usergroup table joined with usergroup
             // Similar to CI's get_usergroup method
-            $userGroups = DB::table('stoma_store_usergroup as su')
+            $query = DB::table('stoma_store_usergroup as su')
                 ->join('stoma_usergroup as u', 'u.usergroupid', '=', 'su.usergroupid')
                 ->leftJoin('stoma_module_access as ma', function($join) {
                     $join->on('ma.usergroupid', '=', 'su.usergroupid')
                          ->on('ma.storeid', '=', 'su.storeid');
                 })
-                ->where('su.storeid', $storeid)
-                ->select('su.suid', 'su.storeid', 'su.usergroupid', 'su.hour_charge', 'su.total_week_hour', 'su.insertdatetime', 'su.insertip', 'su.editdatetime', 'su.editip', 'u.groupname', 'u.storeid as usergroup_storeid')
+                ->where('su.storeid', $storeid);
+            
+            $query->select('su.suid', 'su.storeid', 'su.usergroupid', 'su.hour_charge', 'su.total_week_hour', 'su.insertdatetime', 'su.insertip', 'su.editdatetime', 'su.editip', 'u.groupname', 'u.storeid as usergroup_storeid')
                 ->groupBy('su.suid', 'su.storeid', 'su.usergroupid', 'su.hour_charge', 'su.total_week_hour', 'su.insertdatetime', 'su.insertip', 'su.editdatetime', 'su.editip', 'u.groupname', 'u.storeid')
-                ->get()
-                ->map(function($item) {
-                    return (object) [
-                        'usergroupid' => $item->usergroupid,
-                        'storeid' => $item->storeid,
-                        'groupname' => $item->groupname,
-                        'usergroup_storeid' => $item->usergroup_storeid,
-                        'hour_charge' => $item->hour_charge,
-                        'total_week_hour' => $item->total_week_hour,
-                    ];
-                });
+                ->orderBy('u.groupname', 'asc');
+            
+            $userGroups = $query->get();
+            
+            // Transform items
+            $userGroups = $userGroups->map(function($item) {
+                return (object) [
+                    'usergroupid' => $item->usergroupid,
+                    'storeid' => $item->storeid,
+                    'groupname' => $item->groupname,
+                    'usergroup_storeid' => $item->usergroup_storeid,
+                    'hour_charge' => $item->hour_charge,
+                    'total_week_hour' => $item->total_week_hour,
+                ];
+            });
         }
         
         return view('storeowner.usergroup.index', compact('userGroups'));

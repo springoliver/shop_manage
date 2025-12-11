@@ -1,4 +1,4 @@
-@section('page_header', 'Employees')
+@section('page_header', $pageTitle == 'Active Employees' ? 'Active Employees' : 'Ex Employees')
 
 <x-storeowner-app-layout>
     <!-- Breadcrumb -->
@@ -23,7 +23,11 @@
 
     <!-- Header with Add Button -->
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold text-gray-800">Active Employees</h1>
+        <div class="flex items-center space-x-3">
+            <a href="{{ route('storeowner.employee.index', ['type' => $toggleButtonType ?? 'ex']) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
+                {{ $toggleButtonText ?? 'Ex Employees' }}
+            </a>
+        </div>
         <div class="flex space-x-3">
             <a href="{{ route('storeowner.employee.create') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
                 <i class="fas fa-plus mr-2"></i>
@@ -47,44 +51,67 @@
         </div>
     @endif
 
-    <!-- Search Box -->
-    <div class="mb-4">
-        <input type="text" id="searchbox" placeholder="Enter Keyword" class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
+    <!-- Search and Per Page Controls -->
+    <div class="mb-4 flex justify-between items-center flex-wrap gap-4">
+        <div class="flex items-center gap-2">
+            <input type="text" 
+                   id="searchbox"
+                   placeholder="Search employees..." 
+                   class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm">
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-700">Show:</label>
+            <select id="perPageSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 min-w-[68px] text-sm">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span class="text-sm text-gray-700">entries</span>
+        </div>
     </div>
 
     <!-- Table Card -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="p-6">
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200" id="table-new">
+                <table id="table-new" class="min-w-full divide-y divide-gray-200">
                     <thead>
                         <tr class="bg-gray-50">
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Employee Name
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="name" style="cursor: pointer;">
+                                Employee Name <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Email Id - Username
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="email" style="cursor: pointer;">
+                                Email Id - Username <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Password
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="password" style="cursor: pointer;">
+                                Password <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Clock-in app Login
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="login" style="cursor: pointer;">
+                                Clock-in app Login <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="status" style="cursor: pointer;">
+                                Status <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Display Timesheet & Holidays
+                            <th scope="col" class="pr-0 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="display" style="cursor: pointer;">
+                                Display Timesheet & Holidays <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Action
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white divide-y divide-gray-200" id="employeeTableBody">
                         @forelse ($employees as $employee)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="employee-row hover:bg-gray-50" 
+                                data-row-index="{{ $loop->index }}"
+                                data-name="{{ strtolower(ucfirst($employee->firstname) . ' ' . ucfirst($employee->lastname)) }}"
+                                data-email="{{ strtolower($employee->emailid) }}"
+                                data-password="{{ strtolower(base64_decode($employee->password)) }}"
+                                data-login="{{ $employee->emplogin_code }}"
+                                data-status="{{ strtolower($employee->status) }}"
+                                data-display="{{ strtolower($employee->display_hrs_hols ?? '') }}">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">{{ ucfirst($employee->firstname) }} {{ ucfirst($employee->lastname) }}</div>
                                 </td>
@@ -128,7 +155,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr>
+                            <tr id="noEmployeesRow">
                                 <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
                                     No employees found.
                                 </td>
@@ -137,12 +164,16 @@
                     </tbody>
                 </table>
             </div>
-            <!-- Pagination -->
-            @if($employees->hasPages())
-                <div class="px-6 py-4 border-t border-gray-200">
-                    {{ $employees->links() }}
+            
+            <!-- Client-side Pagination -->
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    Showing <span id="showingStart">1</span> to <span id="showingEnd">10</span> of <span id="totalEntries">{{ $employees->count() }}</span> entries
                 </div>
-            @endif
+                <div id="paginationControls" class="flex items-center gap-2">
+                    <!-- Pagination buttons will be generated by JavaScript -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -189,8 +220,314 @@
         </div>
     </div>
 
+    @push('styles')
+    <style>
+        /* Table cell height and borders - matching My Stores structure */
+        table th,
+        table td {
+            height: 50px;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 24px;
+        }
+        
+        table tbody tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+    @endpush
+
     @push('scripts')
     <script>
+        // Client-side pagination, search, and sorting
+        let currentPage = 1;
+        let perPage = 10;
+        let allRows = [];
+        let filteredRows = [];
+        let sortColumn = null;
+        let sortDirection = 'asc'; // 'asc' or 'desc'
+
+        function initializePagination() {
+            const tbody = document.getElementById('employeeTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.employee-row'));
+            filteredRows = [...allRows];
+            
+            // Hide no employees row if there are employees
+            const noEmployeesRow = document.getElementById('noEmployeesRow');
+            if (noEmployeesRow && allRows.length > 0) {
+                noEmployeesRow.style.display = 'none';
+            }
+            
+            perPage = parseInt(document.getElementById('perPageSelect').value);
+            currentPage = 1;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Filter rows based on search
+            const searchTerm = document.getElementById('searchbox')?.value.toLowerCase() || '';
+            
+            if (searchTerm) {
+                filteredRows = allRows.filter(row => {
+                    const text = row.textContent.toLowerCase();
+                    return text.includes(searchTerm);
+                });
+            } else {
+                filteredRows = [...allRows];
+            }
+
+            // Sort rows if a sort column is selected
+            if (sortColumn) {
+                filteredRows.sort((a, b) => {
+                    const aValue = a.getAttribute(`data-${sortColumn}`) || '';
+                    const bValue = b.getAttribute(`data-${sortColumn}`) || '';
+                    
+                    // Handle numeric values for login code
+                    if (sortColumn === 'login') {
+                        const aNum = parseInt(aValue) || 0;
+                        const bNum = parseInt(bValue) || 0;
+                        return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+                    }
+                    
+                    // String comparison
+                    if (aValue < bValue) {
+                        return sortDirection === 'asc' ? -1 : 1;
+                    }
+                    if (aValue > bValue) {
+                        return sortDirection === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            // Hide all rows first
+            allRows.forEach(row => {
+                row.style.display = 'none';
+            });
+
+            // Show/hide no employees message
+            const noEmployeesRow = document.getElementById('noEmployeesRow');
+            if (noEmployeesRow) {
+                if (filteredRows.length === 0) {
+                    noEmployeesRow.style.display = '';
+                } else {
+                    noEmployeesRow.style.display = 'none';
+                }
+            }
+
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredRows.length / perPage);
+            const start = (currentPage - 1) * perPage;
+            const end = Math.min(start + perPage, filteredRows.length);
+
+            // Reorder rows in DOM if sorted (before showing/hiding)
+            if (sortColumn && filteredRows.length > 0) {
+                const tbody = document.getElementById('employeeTableBody');
+                const noEmployeesRow = document.getElementById('noEmployeesRow');
+                
+                // Get all employee rows (excluding noEmployeesRow) from current DOM
+                const existingRows = Array.from(tbody.querySelectorAll('tr.employee-row'));
+                
+                // Only reorder if we have rows to sort
+                if (existingRows.length > 0) {
+                    // Create a map of row data-index to row element for quick lookup
+                    const rowMap = new Map();
+                    filteredRows.forEach(row => {
+                        const index = row.getAttribute('data-row-index');
+                        if (index !== null) {
+                            rowMap.set(index, row);
+                        }
+                    });
+                    
+                    // Remove all employee rows from DOM (they'll be re-added in sorted order)
+                    existingRows.forEach(row => {
+                        if (row.id !== 'noEmployeesRow') {
+                            row.remove();
+                        }
+                    });
+                    
+                    // Insert sorted rows in correct order
+                    filteredRows.forEach(row => {
+                        if (row.id !== 'noEmployeesRow') {
+                            if (noEmployeesRow && noEmployeesRow.parentNode) {
+                                tbody.insertBefore(row, noEmployeesRow);
+                            } else {
+                                tbody.appendChild(row);
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Hide all rows first, then show only current page rows
+            filteredRows.forEach(row => {
+                row.style.display = 'none';
+            });
+
+            // Show rows for current page
+            for (let i = start; i < end; i++) {
+                if (filteredRows[i] && filteredRows[i].id !== 'noEmployeesRow') {
+                    filteredRows[i].style.display = '';
+                }
+            }
+
+            // Update pagination info
+            document.getElementById('showingStart').textContent = filteredRows.length === 0 ? 0 : start + 1;
+            document.getElementById('showingEnd').textContent = end;
+            document.getElementById('totalEntries').textContent = filteredRows.length;
+
+            // Generate pagination controls
+            generatePaginationControls(totalPages);
+        }
+
+        function generatePaginationControls(totalPages) {
+            const paginationDiv = document.getElementById('paginationControls');
+            paginationDiv.innerHTML = '';
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Previous';
+            prevBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === 1 ? ' opacity-50 cursor-not-allowed' : '');
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(prevBtn);
+
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                firstBtn.onclick = () => {
+                    currentPage = 1;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(firstBtn);
+
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md ' + 
+                    (i === currentPage ? 'bg-gray-800 text-white' : 'hover:bg-gray-100');
+                pageBtn.onclick = () => {
+                    currentPage = i;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                lastBtn.onclick = () => {
+                    currentPage = totalPages;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(lastBtn);
+            }
+
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next';
+            nextBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === totalPages ? ' opacity-50 cursor-not-allowed' : '');
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(nextBtn);
+        }
+
+        function sortTable(column) {
+            // If clicking the same column, toggle direction
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            // Update sort indicators - reset all to default sort icon
+            document.querySelectorAll('.sortable .sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '<i class="fas fa-sort text-gray-400"></i>';
+            });
+
+            // Update the active column's sort indicator
+            const clickedHeader = document.querySelector(`th[data-sort="${column}"]`);
+            if (clickedHeader) {
+                const indicator = clickedHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = sortDirection === 'asc' 
+                        ? '<i class="fas fa-sort-up text-gray-800"></i>' 
+                        : '<i class="fas fa-sort-down text-gray-800"></i>';
+                }
+            }
+
+            currentPage = 1; // Reset to first page when sorting
+            updateDisplay();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePagination();
+
+            // Search functionality
+            document.getElementById('searchbox')?.addEventListener('keyup', function() {
+                currentPage = 1; // Reset to first page on search
+                updateDisplay();
+            });
+
+            // Per page change
+            document.getElementById('perPageSelect')?.addEventListener('change', function() {
+                perPage = parseInt(this.value);
+                currentPage = 1;
+                updateDisplay();
+            });
+
+            // Sort functionality - attach click handlers to sortable headers
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.getAttribute('data-sort');
+                    if (column) {
+                        sortTable(column);
+                    }
+                });
+            });
+        });
+
         function openStatusModal(employeeid, currentStatus) {
             const modal = document.getElementById('statusModal');
             const form = document.getElementById('statusForm');
@@ -211,23 +548,6 @@
         function closeStatusModal() {
             document.getElementById('statusModal').classList.add('hidden');
         }
-
-        // Search functionality
-        document.getElementById('searchbox').addEventListener('keyup', function() {
-            const searchTerm = this.value.toLowerCase();
-            const table = document.getElementById('table-new');
-            const rows = table.getElementsByTagName('tr');
-            
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i];
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            }
-        });
     </script>
     @endpush
 </x-storeowner-app-layout>

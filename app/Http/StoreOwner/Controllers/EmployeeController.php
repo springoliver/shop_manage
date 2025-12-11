@@ -19,18 +19,36 @@ class EmployeeController extends Controller
     /**
      * Display a listing of the employees.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
         $user = auth('storeowner')->user();
         $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
         
-        // Get all active employees (status != 'Deactivate')
-        // Similar to CI's get_all_employee method
-        $employees = StoreEmployee::where('storeid', $storeid)
-            ->orderBy('employeeid', 'DESC')
-            ->paginate(15);
+        // Check if viewing ex-employees or active employees
+        $viewType = $request->get('type', 'active'); // 'active' or 'ex'
         
-        return view('storeowner.employee.index', compact('employees'));
+        // Get employees based on view type - load all for client-side pagination
+        $query = StoreEmployee::where('storeid', $storeid);
+        
+        if ($viewType === 'ex') {
+            // Show only deactivated employees
+            $employees = $query->where('status', 'Deactivate')
+                ->orderBy('employeeid', 'DESC')
+                ->get();
+            $pageTitle = 'EX Employees';
+            $toggleButtonText = 'Active Employees';
+            $toggleButtonType = 'active';
+        } else {
+            // Show active employees (status != 'Deactivate')
+            $employees = $query->where('status', '!=', 'Deactivate')
+                ->orderBy('employeeid', 'DESC')
+                ->get();
+            $pageTitle = 'Active Employees';
+            $toggleButtonText = 'Ex Employees';
+            $toggleButtonType = 'ex';
+        }
+        
+        return view('storeowner.employee.index', compact('employees', 'pageTitle', 'toggleButtonText', 'toggleButtonType'));
     }
 
     /**
@@ -337,9 +355,13 @@ class EmployeeController extends Controller
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::findOrFail($employeeid);
         
-        // Soft delete by setting status to Deactivate (like CI)
-        $employee->status = 'Deactivate';
-        $employee->save();
+        // Delete profile photo if exists
+        if ($employee->profile_photo && Storage::disk('public')->exists($employee->profile_photo)) {
+            Storage::disk('public')->delete($employee->profile_photo);
+        }
+        
+        // Actually delete the employee record
+        $employee->delete();
         
         return redirect()->route('storeowner.employee.index')
             ->with('success', 'Employee deleted successfully.');

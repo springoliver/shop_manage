@@ -93,7 +93,7 @@
                 Website URL<span class="text-red-500"> *</span>
             </label>
             <div class="w-3/4">
-                <x-text-input id="weburl" class="block w-full" type="url" name="weburl" :value="old('weburl', $store->website_url)" required />
+                <x-text-input id="weburl" class="block w-full" type="text" name="weburl" :value="old('weburl', $store->website_url)" required />
                 <x-input-error :messages="$errors->get('weburl')" class="mt-2" />
             </div>
         </div>

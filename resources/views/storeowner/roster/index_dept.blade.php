@@ -21,31 +21,51 @@
         </nav>
     </div>
 
+    <!-- Navigation Buttons -->
+    <div class="mb-2 flex flex-wrap gap-2">
+        <a href="{{ route('storeowner.roster.index') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Roster Template
+        </a>
+        <a href="{{ route('storeowner.roster.viewweekroster') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Current Roster
+        </a>
+        <form action="{{ route('storeowner.roster.searchweekroster') }}" method="POST" class="inline">
+            @csrf
+            <input type="hidden" name="dateofbirth" value="{{ date('Y-m-d') }}">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+                Search & Edit
+            </button>
+        </form>
+        <a href="javascript:void(0);" onclick="document.getElementById('searchPrintForm').submit();" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+            Search & Print
+        </a>
+        <form id="searchPrintForm" action="{{ route('storeowner.roster.searchprintroster') }}" method="POST" class="hidden">
+            @csrf
+            <input type="hidden" name="dateofbirth" value="{{ date('Y-m-d') }}">
+        </form>
+    </div>
+
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold text-gray-800">Rosters Template</h1>
+    <div class="flex justify-between items-center mb-2">
+        <!-- Department Filter Buttons -->
+        @if($departments->count() > 0)
+            <div class="mb-4 flex flex-wrap gap-2">
+                @foreach($departments as $dept)
+                    <a href="{{ route('storeowner.roster.index-dept', base64_encode($dept->departmentid)) }}" 
+                    class="px-4 py-2 {{ $departmentid == $dept->departmentid ? 'bg-blue-700' : 'bg-blue-600' }} text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+                        {{ $dept->department }} Roster
+                    </a>
+                @endforeach
+            </div>
+        @endif
+
         <div class="flex space-x-3">
-            <a href="{{ route('storeowner.roster.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400">
-                All Rosters
-            </a>
             <a href="{{ route('storeowner.roster.weekroster') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700">
                 <i class="fas fa-plus mr-2"></i>
                 Add Week Roster
             </a>
         </div>
     </div>
-
-    <!-- Department Filter Buttons -->
-    @if($departments->count() > 0)
-        <div class="mb-4 flex flex-wrap gap-2">
-            @foreach($departments as $dept)
-                <a href="{{ route('storeowner.roster.index-dept', base64_encode($dept->departmentid)) }}" 
-                   class="px-4 py-2 {{ $departmentid == $dept->departmentid ? 'bg-blue-700' : 'bg-blue-600' }} text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
-                    {{ $dept->department }} Roster
-                </a>
-            @endforeach
-        </div>
-    @endif
 
     <!-- Table -->
     <div class="bg-white rounded-lg shadow">

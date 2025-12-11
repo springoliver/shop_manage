@@ -60,8 +60,7 @@
                                class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
                     </div>
                     <div>
-                        <a href="#" 
-                           onclick="alert('Export functionality will be implemented'); return false;"
+                        <a href="{{ route('storeowner.clocktime.export-all-employee-hols') }}" 
                            class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
                             Export holiday summary
                         </a>
@@ -106,12 +105,12 @@
                                 @foreach($empPayrollHrs as $payroll)
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <a href="#" class="text-blue-600 hover:text-blue-800">
+                                            <a href="{{ route('storeowner.clocktime.group-yearly-hrs-all-employee', ['year' => base64_encode($payroll->year)]) }}" class="text-blue-600 hover:text-blue-800" title="Year">
                                                 {{ $payroll->year }}
                                             </a>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <a href="#" class="text-blue-600 hover:text-blue-800">
+                                            <a href="{{ route('storeowner.clocktime.yearly-hrs-byemployee', ['employeeid' => base64_encode($payroll->employeeid)]) }}" class="text-blue-600 hover:text-blue-800" title="Employee">
                                                 {{ $payroll->firstname }} {{ $payroll->lastname }}
                                             </a>
                                         </td>
