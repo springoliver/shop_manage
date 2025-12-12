@@ -18,6 +18,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 class AjaxController extends Controller
 {
@@ -521,6 +523,152 @@ class AjaxController extends Controller
         }
         
         return Response::json(['status' => 'success']);
+    }
+
+    /**
+     * Send order sheet to supplier via email.
+     */
+    public function sendOrderSheet(Request $request)
+    {
+        $purchaseOrderId = $request->get('purchase_orders_id');
+        
+        if (!$purchaseOrderId) {
+            return Response::json(['status' => false, 'message' => 'Purchase Order ID required']);
+        }
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        
+        try {
+            // Get purchase order with supplier and store info
+            $purchaseOrder = PurchaseOrder::with(['supplier', 'store'])
+                ->where('purchase_orders_id', $purchaseOrderId)
+                ->where('storeid', $storeid)
+                ->first();
+            
+            if (!$purchaseOrder) {
+                return Response::json(['status' => false, 'message' => 'Purchase Order not found']);
+            }
+            
+            // Check if supplier has email
+            if (!$purchaseOrder->supplier->supplier_email) {
+                return Response::json(['status' => false, 'message' => 'Supplier email not configured']);
+            }
+            
+            // Check if store email credentials are configured
+            if (!$purchaseOrder->store->store_email || !$purchaseOrder->store->store_email_pass) {
+                return Response::json(['status' => false, 'message' => 'Store email credentials not configured']);
+            }
+            
+            // Get purchased products
+            $purchasedProducts = DB::table('stoma_purchasedproducts as pp')
+                ->select(
+                    'pp.productid',
+                    'pp.quantity',
+                    'pp.product_price',
+                    'pp.totalamount',
+                    'sp.product_name',
+                    'pm.purchasemeasure'
+                )
+                ->leftJoin('stoma_store_products as sp', 'pp.productid', '=', 'sp.productid')
+                ->leftJoin('stoma_purchasemeasures as pm', 'pp.purchasemeasuresid', '=', 'pm.purchasemeasuresid')
+                ->where('pp.purchase_orders_id', $purchaseOrderId)
+                ->get();
+            
+            // Prepare email data
+            $storeEmail = $purchaseOrder->store->store_email;
+            $storeEmailPass = $purchaseOrder->store->store_email_pass;
+            $supplierEmail = $purchaseOrder->supplier->supplier_email;
+            $storeName = $purchaseOrder->store->storename ?? '';
+            $supplierName = $purchaseOrder->supplier->supplier_name ?? '';
+            $supplierAccNumber = $purchaseOrder->supplier->supplier_acc_number ?? '';
+            $poId = $purchaseOrder->purchase_orders_id;
+            $orderDate = $purchaseOrder->insertdate ? explode(' ', $purchaseOrder->insertdate)[0] : '';
+            $deliveryDate = $purchaseOrder->delivery_date ?? '';
+            $poNote = $purchaseOrder->po_note ?? '';
+            
+            // Create PHPMailer instance
+            $mail = new PHPMailer(true);
+            
+            // Server settings
+            $mail->SMTPDebug = false;
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = $storeEmail;
+            $mail->Password = $storeEmailPass;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL
+            $mail->Port = 465;
+            
+            // Recipients
+            $mail->setFrom($storeEmail, '');
+            $mail->addAddress($supplierEmail);
+            $mail->addReplyTo($storeEmail, '');
+            $mail->addBCC($storeEmail); // BCC store email
+            
+            // Subject
+            $subject = 'Order From - ' . $storeName . ' - Acc No: ' . $supplierAccNumber;
+            $mail->Subject = $subject;
+            
+            // Email body (matching CI format)
+            $emailBody = '<html><body><table width="100%" border="1" style="border-collapse: collapse; border: 1px solid black;padding: 1%;margin: 1%;border-spacing:0px; width:100%">';
+            
+            $emailBody .= '<tr>';
+            $emailBody .= '<td> From: ' . htmlspecialchars($storeName) . '</td>';
+            $emailBody .= '<td>Acc-No: ' . htmlspecialchars($supplierAccNumber) . '</td>';
+            $emailBody .= '<td>PO-No: ' . htmlspecialchars($poId) . '</td>';
+            $emailBody .= '<td>Supplier: ' . htmlspecialchars($supplierName) . '</td>';
+            $emailBody .= '</tr>';
+            
+            $emailBody .= '<tr>';
+            $emailBody .= '<td>Order Date: </td>';
+            $emailBody .= '<td>' . htmlspecialchars($orderDate) . '</td>';
+            $emailBody .= '<td>Delivery Date: </td>';
+            $emailBody .= '<td>' . htmlspecialchars($deliveryDate) . '</td>';
+            $emailBody .= '</tr>';
+            
+            $emailBody .= '<tr>';
+            $emailBody .= '<th colspan="4">Items</th>';
+            $emailBody .= '</tr>';
+            
+            $emailBody .= '<tr>';
+            $emailBody .= '<th>Item</th>';
+            $emailBody .= '<th colspan="3">Qty.</th>';
+            $emailBody .= '</tr>';
+            
+            foreach ($purchasedProducts as $product) {
+                $emailBody .= '<tr>';
+                $emailBody .= '<td>' . htmlspecialchars($product->product_name) . ' (' . htmlspecialchars($product->purchasemeasure ?? '') . ')</td>';
+                $emailBody .= '<td colspan="3" style="text-align:center;">' . htmlspecialchars($product->quantity) . '</td>';
+                $emailBody .= '</tr>';
+            }
+            
+            $emailBody .= '<tr>';
+            $emailBody .= '<th colspan="4">Notes</th>';
+            $emailBody .= '</tr>';
+            
+            $emailBody .= '<tr>';
+            $emailBody .= '<td colspan="4">' . htmlspecialchars($poNote) . '</td>';
+            $emailBody .= '</tr>';
+            
+            $emailBody .= '</table></body></html>';
+            
+            // Content
+            $mail->isHTML(true);
+            $mail->Body = $emailBody;
+            
+            // Send email
+            $status = $mail->send();
+            
+            return Response::json(['status' => $status]);
+            
+        } catch (Exception $e) {
+            \Log::error('Failed to send order sheet email: ' . $e->getMessage());
+            return Response::json(['status' => false, 'message' => 'Failed to send email: ' . $e->getMessage()]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send order sheet email: ' . $e->getMessage());
+            return Response::json(['status' => false, 'message' => 'Failed to send email']);
+        }
     }
 }
 

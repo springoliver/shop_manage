@@ -202,8 +202,16 @@ class UserGroupController extends Controller
         $user = auth('storeowner')->user();
         $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
         
-        // Manually resolve the user group since route model binding might not work with custom route key
-        $userGroup = UserGroup::where('usergroupid', $usergroup)->first();
+        // Get usergroupid from POST (base64 encoded like CI) or from route
+        $usergroupid = $request->input('usergroupid');
+        if ($usergroupid) {
+            $usergroupid = base64_decode($usergroupid);
+        } else {
+            $usergroupid = $usergroup;
+        }
+        
+        // Manually resolve the user group
+        $userGroup = UserGroup::where('usergroupid', $usergroupid)->first();
         
         if (!$userGroup) {
             abort(404, 'User Group not found.');
@@ -214,26 +222,59 @@ class UserGroupController extends Controller
             abort(403, 'Unauthorized access.');
         }
 
-        $validated = $request->validate([
-            'totalmodule' => ['required', 'integer'],
-            'accesslevel' => ['required', 'array'],
-            'accesslevel.*' => ['required', 'in:Admin,View,None'],
-        ]);
-
-        // Update module access levels
-        for ($i = 0; $i < $validated['totalmodule']; $i++) {
-            $moduleid = $request->input('hdnmodule' . $i);
-            $level = $validated['accesslevel'][$i] ?? 'None';
-
-            DB::table('stoma_module_access')
-                ->where('storeid', $storeid)
-                ->where('usergroupid', $userGroup->usergroupid)
-                ->where('moduleid', $moduleid)
-                ->update(['level' => $level]);
+        $totalmodule = $request->input('totalmodule');
+        $accesslevel = $request->input('accesslevel', []);
+        
+        // Get all module IDs
+        $moduleids = [];
+        for ($i = 0; $i < $totalmodule; $i++) {
+            $moduleids[$i] = $request->input('hdnmodule' . $i);
         }
 
-        return redirect()->route('storeowner.usergroup.index')
-            ->with('success', 'Module settings updated successfully.');
+        // Update module access levels (matching CI's logic: only moduleid and usergroupid in WHERE clause)
+        $res = false;
+        for ($i = 0; $i < count($moduleids); $i++) {
+            $moduleid = $moduleids[$i];
+            $level = $accesslevel[$i] ?? 'None';
+
+            // Check if record exists, update or insert
+            $exists = DB::table('stoma_module_access')
+                ->where('storeid', $storeid)
+                ->where('usergroupid', $usergroupid)
+                ->where('moduleid', $moduleid)
+                ->exists();
+
+            if ($exists) {
+                // Update existing record (like CI's update_data_array)
+                $res = DB::table('stoma_module_access')
+                    ->where('storeid', $storeid)
+                    ->where('usergroupid', $usergroupid)
+                    ->where('moduleid', $moduleid)
+                    ->update([
+                        'level' => $level,
+                        'editdate' => now(),
+                        'editip' => $request->ip(),
+                    ]);
+            } else {
+                // Insert new record if it doesn't exist
+                $res = DB::table('stoma_module_access')->insert([
+                    'storeid' => $storeid,
+                    'usergroupid' => $usergroupid,
+                    'moduleid' => $moduleid,
+                    'level' => $level,
+                    'insertdate' => now(),
+                    'insertip' => $request->ip(),
+                ]);
+            }
+        }
+
+        if ($res) {
+            return redirect()->route('storeowner.usergroup.index')
+                ->with('success', 'Module Setting Updated Successfully.');
+        } else {
+            return redirect()->back()
+                ->with('error', 'Something went wrong please try again.');
+        }
     }
 
     /**

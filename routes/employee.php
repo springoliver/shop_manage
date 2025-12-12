@@ -8,6 +8,7 @@ use App\Http\Employee\Controllers\ResignationController as EmployeeResignationCo
 use App\Http\Employee\Controllers\DocumentController as EmployeeDocumentController;
 use App\Http\Employee\Controllers\RequestModuleController as EmployeeRequestModuleController;
 use App\Http\Employee\Controllers\PosController as EmployeePosController;
+use App\Http\Employee\Controllers\DashboardController as EmployeeDashboardController;
 use App\Http\Employee\Controllers\Auth\AuthenticatedSessionController as EmployeeAuthenticatedSessionController;
 use App\Http\Employee\Controllers\Auth\ConfirmablePasswordController as EmployeeConfirmablePasswordController;
 use App\Http\Employee\Controllers\Auth\EmailVerificationNotificationController as EmployeeEmailVerificationNotificationController;
@@ -48,9 +49,14 @@ Route::prefix('employees')->name('employee.')->group(function () {
 
     // Employee Authenticated Routes
     Route::middleware('auth.employee')->group(function () {
-        Route::get('/', function () {
-            return view('employee.dashboard');
-        })->name('dashboard');
+        // Dashboard
+        Route::get('/', [EmployeeDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [EmployeeDashboardController::class, 'index']);
+        
+        // Dashboard Chart AJAX endpoints
+        Route::post('/dashboard/get-sales-chart-weekly', [EmployeeDashboardController::class, 'getSalesChartWeekly'])->name('dashboard.get-sales-chart-weekly');
+        Route::post('/dashboard/get-hours-chart-weekly', [EmployeeDashboardController::class, 'getHoursChartWeekly'])->name('dashboard.get-hours-chart-weekly');
+        Route::post('/dashboard/get-po-chart-weekly', [EmployeeDashboardController::class, 'getPoChartWeekly'])->name('dashboard.get-po-chart-weekly');
 
         Route::get('verify-email', EmployeeEmailVerificationPromptController::class)
             ->name('verification.notice');

@@ -18,6 +18,14 @@
                 }
             }
         }
+        // Also check for 'children' key (backward compatibility)
+        if (isset($item['children'])) {
+            foreach ($item['children'] as $subitem) {
+                if (isset($subitem['route']) && $activeRoute === $subitem['route']) {
+                    return true;
+                }
+            }
+        }
         return false;
     };
     
@@ -25,6 +33,14 @@
     $isSubmenuOpen = function($item) use ($activeRoute) {
         if (isset($item['submenu'])) {
             foreach ($item['submenu'] as $subitem) {
+                if (isset($subitem['route']) && $activeRoute === $subitem['route']) {
+                    return true;
+                }
+            }
+        }
+        // Also check for 'children' key (backward compatibility)
+        if (isset($item['children'])) {
+            foreach ($item['children'] as $subitem) {
                 if (isset($subitem['route']) && $activeRoute === $subitem['route']) {
                     return true;
                 }
@@ -61,7 +77,7 @@
         <nav class="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
             {{-- Loop over the $menuItems prop --}}
             @foreach ($menuItems as $index => $item)
-                @if(isset($item['type']) && $item['type'] === 'submenu' && isset($item['submenu']))
+                @if(isset($item['type']) && $item['type'] === 'submenu' && (isset($item['submenu']) || isset($item['children'])))
                     @php
                         $itemLabel = $item['label'] ?? '';
                         $submenuId = 'submenu-' . $index;

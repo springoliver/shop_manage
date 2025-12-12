@@ -42,15 +42,20 @@
     </div>
 
     @push('styles')
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css">
+    <link rel="stylesheet" href="{{ asset('css/fullcalendar/main.min.css') }}">
+    <style>
+        .fc {
+            font-family: inherit;
+        }
+    </style>
     @endpush
 
     @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             var calendar = new FullCalendar.Calendar(calendarEl, {
+                plugins: [fullCalendarPlugins.dayGrid, fullCalendarPlugins.interaction],
                 initialView: 'dayGridMonth',
                 headerToolbar: {
                     left: 'prev,next today',
@@ -64,6 +69,7 @@
                             successCallback(data.events);
                         })
                         .catch(error => {
+                            console.error('Error fetching events:', error);
                             failureCallback(error);
                         });
                 },

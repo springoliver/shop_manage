@@ -75,6 +75,7 @@
                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
                                    autocomplete="off" required>
                             <p class="mt-2 text-sm text-gray-500">Week Number: <span id="week_num"></span></p>
+                            <p class="mt-1 text-xs text-red-500" id="week_error" style="display: none;">Please wait for week details to load...</p>
                         </div>
                     </div>
 
@@ -105,10 +106,10 @@
                             Payslip File <span class="text-red-500">*</span>
                         </label>
                         <div class="w-3/4">
-                            <input type="file" name="doc" id="doc" accept=".pdf"
+                            <input type="file" name="doc" id="doc"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" 
                                    required>
-                            <p class="mt-2 text-sm text-gray-500">Allowed types: PDF (Max: 50MB)</p>
+                            <p class="mt-2 text-sm text-gray-500">(Max: 50MB)</p>
                         </div>
                     </div>
 
@@ -123,118 +124,115 @@
                     </div>
                 </form>
             </div>
-
-            <!-- Existing Payslips Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800">Employee Payroll</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Id</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week - Year</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Group Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Email id</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @if($allPayslips->count() > 0)
-                                @foreach($allPayslips as $payslip)
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payslip->payslipid }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payslip->weeknumber ?? $payslip->weekid }} - {{ $payslip->year }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ ucfirst($payslip->firstname ?? '') }} {{ ucfirst($payslip->lastname ?? '') }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payslip->groupname ?? '-' }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payslip->emailid ?? '-' }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <a href="{{ route('storeowner.employeepayroll.view', base64_encode($payslip->payslipid)) }}" 
-                                               class="text-blue-600 hover:text-blue-800 mr-3" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('storeowner.employeepayroll.downloadpdf', base64_encode($payslip->payslipid)) }}" 
-                                               target="_blank"
-                                               class="text-green-600 hover:text-green-800 mr-3" title="Download">
-                                                <i class="fas fa-download"></i>
-                                            </a>
-                                            <a href="#" 
-                                               onclick="event.preventDefault(); if(confirm('Are you sure you want to delete this payslip?')) { document.getElementById('delete-form-{{ $payslip->payslipid }}').submit(); }"
-                                               class="text-red-600 hover:text-red-800" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                            <form id="delete-form-{{ $payslip->payslipid }}" 
-                                                  action="{{ route('storeowner.employeepayroll.destroy', base64_encode($payslip->payslipid)) }}" 
-                                                  method="POST" 
-                                                  style="display: none;">
-                                                @csrf
-                                                @method('DELETE')
-                                            </form>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            @else
-                                <tr>
-                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No records found.</td>
-                                </tr>
-                            @endif
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Legend -->
-            <div class="mt-4 text-sm text-gray-600">
-                <strong>Legend(s):</strong>
-                <i class="fas fa-eye ml-2"></i> View
-            </div>
         </div>
     </div>
 
-    @push('scripts')    <script>
-        $(document).ready(function() {
-            // Date picker change handler
-            $('#dateofbirth').on('change', function() {
-                const date = $(this).val();
-                if (date) {
-                    $.ajax({
-                        url: '{{ route("storeowner.employeepayroll.get-week-details") }}',
-                        method: 'POST',
-                        data: {
-                            '_token': '{{ csrf_token() }}',
-                            'date': date
-                        },
-                        success: function(response) {
-                            $('#week_num').text(response.week_num);
-                            $('#myweek_num').val(response.week_num);
-                            $('#my_year').val(response.year);
-                            $('#myweek_start').val(response.week_start);
-                            $('#myweek_end').val(response.week_end);
-                        },
-                        error: function() {
-                            alert('Error getting week details. Please try again.');
+    @push('scripts')
+    <script>
+        // Wait for jQuery to be available
+        (function() {
+            var retries = 0;
+            var maxRetries = 50; // 5 seconds max wait (50 * 100ms)
+            
+            function initPayslipForm() {
+                // Check if jQuery is available
+                var $ = window.jQuery || window.$;
+                
+                if (!$ || typeof $ !== 'function') {
+                    retries++;
+                    if (retries < maxRetries) {
+                        setTimeout(initPayslipForm, 100);
+                        return;
+                    } else {
+                        console.error('jQuery failed to load after ' + maxRetries + ' retries');
+                        return;
+                    }
+                }
+                
+                $(document).ready(function() {
+                    // Date picker change handler
+                    $('#dateofbirth').on('change', function() {
+                        const date = $(this).val();
+                        if (date) {
+                            // Show loading message
+                            $('#week_error').text('Loading week details...').show();
+                            
+                            $.ajax({
+                                url: '{{ route("storeowner.employeepayroll.get-week-details") }}',
+                                method: 'POST',
+                                data: {
+                                    '_token': '{{ csrf_token() }}',
+                                    'date': date
+                                },
+                                success: function(response) {
+                                    if (response.week_num && response.year) {
+                                        $('#week_num').text(response.week_num);
+                                        $('#myweek_num').val(response.week_num);
+                                        $('#my_year').val(response.year);
+                                        $('#myweek_start').val(response.week_start || '');
+                                        $('#myweek_end').val(response.week_end || '');
+                                        $('#week_error').hide();
+                                    } else {
+                                        $('#week_error').text('Unable to get week details. Please try again.').show();
+                                    }
+                                },
+                                error: function(xhr, status, error) {
+                                    console.error('Error getting week details:', error);
+                                    $('#week_error').text('Error getting week details. Please try again.').show();
+                                    // Clear hidden fields on error
+                                    $('#myweek_num').val('');
+                                    $('#my_year').val('');
+                                    $('#myweek_start').val('');
+                                    $('#myweek_end').val('');
+                                }
+                            });
+                        } else {
+                            // Clear hidden fields if date is cleared
+                            $('#week_num').text('');
+                            $('#myweek_num').val('');
+                            $('#my_year').val('');
+                            $('#myweek_start').val('');
+                            $('#myweek_end').val('');
+                            $('#week_error').hide();
                         }
                     });
-                }
-            });
+                    
+                    // Also trigger on page load if date is already selected
+                    if ($('#dateofbirth').val()) {
+                        $('#dateofbirth').trigger('change');
+                    }
 
-            // Form validation
-            $('#myform').on('submit', function(e) {
-                const employeeid = $('#employeeid').val();
-                const dateofbirth = $('#dateofbirth').val();
-                const doc = $('#doc')[0].files.length;
-                
-                if (!employeeid || !dateofbirth || !doc) {
-                    e.preventDefault();
-                    alert('Please fill in all required fields.');
-                    return false;
-                }
-            });
-        });
+                    // Form validation
+                    $('#myform').on('submit', function(e) {
+                        const employeeid = $('#employeeid').val();
+                        const dateofbirth = $('#dateofbirth').val();
+                        const doc = $('#doc')[0].files.length;
+                        const myweek_num = $('#myweek_num').val();
+                        const my_year = $('#my_year').val();
+                        
+                        if (!employeeid || !dateofbirth || !doc) {
+                            e.preventDefault();
+                            alert('Please fill in all required fields.');
+                            return false;
+                        }
+                        
+                        // Validate that week details were populated
+                        if (!myweek_num || !my_year) {
+                            e.preventDefault();
+                            alert('Please select a valid date to get week details.');
+                            return false;
+                        }
+                    });
+                });
+            }
+            
+            // Start initialization when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initPayslipForm);
+            } else {
+                initPayslipForm();
+            }
+        })();
     </script>
     @endpush
 </x-storeowner-app-layout>

@@ -4,6 +4,7 @@ namespace App\Http\StoreOwner\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\StoreEmployee;
+use App\Models\Store;
 use App\Models\UserGroup;
 use App\Models\Department;
 use Illuminate\Http\RedirectResponse;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 class EmployeeController extends Controller
 {
@@ -184,7 +187,59 @@ class EmployeeController extends Controller
         $employee->status = 'Active';
         $employee->save();
         
-        // TODO: Send email notification with login code
+        // Send email notification with login code using PHPMailer (like CI)
+        try {
+            $store = Store::find($storeid);
+            $storeName = $store->store_name ?? config('app.name');
+            $storeEmail = $store->store_email ?? config('mail.from.address');
+            $storeEmailPass = $store->store_email_pass ?? '';
+            
+            // Only send email if store email is configured
+            if ($storeEmail && $storeEmailPass) {
+                // Create PHPMailer instance
+                $mail = new PHPMailer(true);
+                
+                // Server settings
+                $mail->SMTPDebug = false;
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = $storeEmail;
+                $mail->Password = $storeEmailPass;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL
+                $mail->Port = 465;
+                
+                // Recipients
+                $mail->setFrom($storeEmail, '');
+                $mail->addAddress($validated['emailid'], $validated['firstname'] . ' ' . $validated['lastname']);
+                
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = $storeName . ' - New Employee - ';
+                
+                // Email body (matching CI format)
+                $emailBody = '<html><body><table>';
+                $emailBody .= '<tr>';
+                $emailBody .= '<td>Hello ' . htmlspecialchars($validated['firstname']) . '&nbsp; ' . htmlspecialchars($validated['lastname']) . '<br>';
+                $emailBody .= '<br>';
+                $emailBody .= 'Welcome aboard to ' . htmlspecialchars($storeName) . ',<br>';
+                $emailBody .= '<br>Your Clock in-out code is: <strong>' . $random . '</strong><br>';
+                $emailBody .= '<br>Please clock in when you are ready for work, and clock out when you finish your work.<br>';
+                $emailBody .= '<br>Looking forward to working with you.<br>';
+                $emailBody .= '<br>Best of luck.<br>';
+                $emailBody .= '<br>' . htmlspecialchars($storeName) . '</td>';
+                $emailBody .= '</tr>';
+                $emailBody .= '</table></body></html>';
+                
+                $mail->Body = $emailBody;
+                
+                // Send email
+                $mail->send();
+            }
+        } catch (Exception $e) {
+            // Log error but don't prevent employee creation
+            \Log::error('Failed to send welcome email to employee ' . $employee->emailid . ': ' . $e->getMessage());
+        }
         
         return redirect()->route('storeowner.employee.index')
             ->with('success', 'Employee added successfully.');

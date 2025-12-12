@@ -296,8 +296,27 @@
         }
         
         function emailOrderSheet(purchase_orders_id) {
-            // TODO: Implement send order sheet functionality
-            alert("Send order sheet functionality coming soon!");
+            $.ajax({
+                url: '{{ route("storeowner.ajax.send-order-sheet") }}',
+                method: 'GET',
+                data: {
+                    purchase_orders_id: purchase_orders_id
+                },
+                dataType: 'json',
+                beforeSend: function() {
+                    // Can add loading indicator here
+                },
+                success: function(res) {
+                    if( res.status ) {
+                        alert("Order sheet has been sent to supplier!");
+                    } else {
+                        alert(res.message || "Error sending order sheet. Please try again later.");
+                    }
+                },
+                error: function() {
+                    alert("Error sending order sheet. Please try again later.");
+                }
+            });
         }
     </script>
     @endpush

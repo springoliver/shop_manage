@@ -392,5 +392,224 @@ class EmployeePayrollController extends Controller
             'week_end' => $weekEnd->format('Y-m-d'),
         ]);
     }
+
+    /**
+     * Display employee payroll settings page.
+     */
+    public function employeeSettings(): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        
+        // Get all employees for dropdown
+        $employees = StoreEmployee::where('storeid', $storeid)
+            ->where('status', 'Active')
+            ->select('firstname', 'lastname', 'employeeid')
+            ->orderBy('firstname', 'ASC')
+            ->get();
+        
+        // Get employees with existing settings (for left sidebar list)
+        $employeeSettings = DB::table('stoma_emp_payroll_ire_employee_settings as ep')
+            ->select('ep.*', 'e.firstname', 'e.lastname', 'e.employeeid')
+            ->leftJoin('stoma_employee as e', 'ep.employeeid', '=', 'e.employeeid')
+            ->where('e.storeid', $storeid)
+            ->orderBy('e.firstname', 'ASC')
+            ->get();
+        
+        // Get all dropdown options
+        $taxExemptions = DB::table('stoma_emp_payroll_ire_tax_exemption')->orderBy('name')->get();
+        $prsiCategories = DB::table('stoma_emp_payroll_ire_prsi_category')->orderBy('name')->get();
+        $prsiClasses = DB::table('stoma_emp_payroll_ire_prsi_class')->orderBy('name')->get();
+        $uscCutoffPoints = DB::table('stoma_emp_payroll_ire_usc_standard_cuttoff_points')->orderBy('name')->get();
+        $prdCalculationMethods = DB::table('stoma_emp_payroll_ire_prd_calculation_methods')->orderBy('name')->get();
+        $pensionTypes = DB::table('stoma_emp_payroll_ire_pension_types')->orderBy('name')->get();
+        
+        return view('storeowner.employeepayroll.employee_settings', compact(
+            'employees',
+            'employeeSettings',
+            'taxExemptions',
+            'prsiCategories',
+            'prsiClasses',
+            'uscCutoffPoints',
+            'prdCalculationMethods',
+            'pensionTypes'
+        ));
+    }
+
+    /**
+     * Edit employee payroll settings (pre-populate form).
+     */
+    public function editEmployeeSettings($employeeSettingsId): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $employeeSettingsId = base64_decode($employeeSettingsId);
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        
+        // Get existing settings
+        $existingSettings = DB::table('stoma_emp_payroll_ire_employee_settings as ep')
+            ->select('ep.*', 'e.firstname', 'e.lastname', 'e.employeeid')
+            ->leftJoin('stoma_employee as e', 'ep.employeeid', '=', 'e.employeeid')
+            ->where('ep.employee_settings_id', $employeeSettingsId)
+            ->first();
+        
+        if (!$existingSettings) {
+            return redirect()->route('storeowner.employeepayroll.employee-settings')
+                ->with('error', 'Employee settings not found.');
+        }
+        
+        // Get all employees for dropdown
+        $employees = StoreEmployee::where('storeid', $storeid)
+            ->where('status', 'Active')
+            ->select('firstname', 'lastname', 'employeeid')
+            ->orderBy('firstname', 'ASC')
+            ->get();
+        
+        // Get employees with existing settings (for left sidebar list)
+        $employeeSettings = DB::table('stoma_emp_payroll_ire_employee_settings as ep')
+            ->select('ep.*', 'e.firstname', 'e.lastname', 'e.employeeid')
+            ->leftJoin('stoma_employee as e', 'ep.employeeid', '=', 'e.employeeid')
+            ->where('e.storeid', $storeid)
+            ->orderBy('e.firstname', 'ASC')
+            ->get();
+        
+        // Get all dropdown options
+        $taxExemptions = DB::table('stoma_emp_payroll_ire_tax_exemption')->orderBy('name')->get();
+        $prsiCategories = DB::table('stoma_emp_payroll_ire_prsi_category')->orderBy('name')->get();
+        $prsiClasses = DB::table('stoma_emp_payroll_ire_prsi_class')->orderBy('name')->get();
+        $uscCutoffPoints = DB::table('stoma_emp_payroll_ire_usc_standard_cuttoff_points')->orderBy('name')->get();
+        $prdCalculationMethods = DB::table('stoma_emp_payroll_ire_prd_calculation_methods')->orderBy('name')->get();
+        $pensionTypes = DB::table('stoma_emp_payroll_ire_pension_types')->orderBy('name')->get();
+        
+        return view('storeowner.employeepayroll.employee_settings', compact(
+            'employees',
+            'employeeSettings',
+            'taxExemptions',
+            'prsiCategories',
+            'prsiClasses',
+            'uscCutoffPoints',
+            'prdCalculationMethods',
+            'pensionTypes',
+            'existingSettings'
+        ));
+    }
+
+    /**
+     * Update or create employee payroll settings.
+     */
+    public function updateEmployeeSettings(Request $request): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $validated = $request->validate([
+            'employeeid' => 'required|integer',
+        ]);
+        
+        $user = Auth::guard('storeowner')->user();
+        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $employeeSettingsId = $request->input('employee_settings_id');
+        
+        // Parse date if provided
+        $prevEmploymentLeaveDate = null;
+        if ($request->input('prev_employment_leavedate')) {
+            try {
+                $prevEmploymentLeaveDate = Carbon::createFromFormat('d-m-Y', $request->input('prev_employment_leavedate'))->format('Y-m-d');
+            } catch (\Exception $e) {
+                // If parsing fails, try default format
+                try {
+                    $prevEmploymentLeaveDate = Carbon::parse($request->input('prev_employment_leavedate'))->format('Y-m-d');
+                } catch (\Exception $e2) {
+                    // Leave as null if still fails
+                }
+            }
+        }
+        
+        $data = [
+            'storeid' => $storeid,
+            'employeeid' => $validated['employeeid'],
+            'prev_employment_leavedate' => $prevEmploymentLeaveDate,
+            'prev_employer_no' => $request->input('prev_employer_no') ?? null,
+            'gross_pay_for_paye' => $request->input('gross_pay_for_paye') ?? '',
+            'total_pay_for_paye' => (int)($request->input('total_pay_for_paye') ?? 0),
+            'gross_pay_for_usc' => (int)($request->input('gross_pay_for_usc') ?? 0),
+            'total_pay_for_usc' => (int)($request->input('total_pay_for_usc') ?? 0),
+            'gross_pay_for_prd' => (int)($request->input('gross_pay_for_prd') ?? 0),
+            'total_pay_for_prd' => (int)($request->input('total_pay_for_prd') ?? 0),
+            'total_pay_for_lpt' => (int)($request->input('total_pay_for_lpt') ?? 0),
+            'tax_basis' => $request->input('tax_basis') ?? 'emergency_basis',
+            'tax_exemption_id' => (int)($request->input('tax_exemption_id') ?? 0),
+            'weekly_tax_credit' => (int)($request->input('weekly_tax_credit') ?? 0),
+            'annualy_tax_credit' => (int)($request->input('annualy_tax_credit') ?? 0),
+            'weekly_cut_off' => (int)($request->input('weekly_cut_off') ?? 0),
+            'annualy_cut_off' => (int)($request->input('annualy_cut_off') ?? 0),
+            'weekly_cutoff_point0_5' => (int)($request->input('weekly_cutoff_point0_5') ?? 0),
+            'anualy_cutoff_point0_5' => (int)($request->input('anualy_cutoff_point0_5') ?? 0),
+            'weekly_cutoff_point2_5' => (int)($request->input('weekly_cutoff_point2_5') ?? 0),
+            'anualy_cutoff_point2_5' => (int)($request->input('anualy_cutoff_point2_5') ?? 0),
+            'weekly_cutoff_point5' => (int)($request->input('weekly_cutoff_point5') ?? 0),
+            'anualy_cutoff_point5' => (int)($request->input('anualy_cutoff_point5') ?? 0),
+            'weekly_cutoff_point8' => (int)($request->input('weekly_cutoff_point8') ?? 0),
+            'anualy_cutoff_point8' => (int)($request->input('anualy_cutoff_point8') ?? 0),
+            'prsi_category_id' => (int)($request->input('prsi_category_id') ?? 0),
+            'calculation_methods_id' => (int)($request->input('calculation_methods_id') ?? 0),
+            'lpd_tobe_reduced' => (int)($request->input('lpd_tobe_reduced') ?? 0),
+            'national_pay_todate' => (int)($request->input('national_pay_todate') ?? 0),
+            'total_employee_prsi_able_pay_todate' => (int)($request->input('total_employee_prsi_able_pay_todate') ?? 0),
+            'medical_insurance_pay_todate' => (int)($request->input('medical_insurance_pay_todate') ?? 0),
+            'total_employee_prsi_pay_todate' => (int)($request->input('total_employee_prsi_pay_todate') ?? 0),
+            'total_employer_prsi_able_pay_todate' => (int)($request->input('total_employer_prsi_able_pay_todate') ?? 0),
+            'taxable_ilness_benefit_todate' => (int)($request->input('taxable_ilness_benefit_todate') ?? 0),
+            'total_employer_prsi_pay_todate' => (int)($request->input('total_employer_prsi_pay_todate') ?? 0),
+            'paye_able_pay_todate' => (int)($request->input('paye_able_pay_todate') ?? 0),
+            'pension_able_pay_todate' => (int)($request->input('pension_able_pay_todate') ?? 0),
+            'pay_todate' => (int)($request->input('pay_todate') ?? 0),
+            'pension_types_id' => (int)($request->input('pension_types_id') ?? 0),
+            'usc_able_pay_todate' => (int)($request->input('usc_able_pay_todate') ?? 0),
+            'employee_pension_todate' => (int)($request->input('employee_pension_todate') ?? 0),
+            'employer_pension_todate' => (int)($request->input('employer_pension_todate') ?? 0),
+            'prd_able_todate' => (int)($request->input('prd_able_todate') ?? 0),
+            'prd_todate' => (int)($request->input('prd_todate') ?? 0),
+            'lpd_todate' => (int)($request->input('lpd_todate') ?? 0),
+            'prsi_class_id' => (int)($request->input('prsi_class_id') ?? 0),
+            'employee_previous_prsi_class' => (int)($request->input('employee_previous_prsi_class') ?? 0),
+        ];
+        
+        if ($employeeSettingsId) {
+            // Update existing settings
+            $data['editdatetime'] = now();
+            $data['editip'] = $request->ip();
+            
+            DB::table('stoma_emp_payroll_ire_employee_settings')
+                ->where('employee_settings_id', $employeeSettingsId)
+                ->update($data);
+            
+            $message = 'Employee payroll settings updated successfully.';
+        } else {
+            // Create new settings
+            $data['insertdatetime'] = now();
+            $data['insertip'] = $request->ip();
+            $data['editdatetime'] = Carbon::parse('0000-00-00 00:00:00');
+            $data['editip'] = '';
+            
+            DB::table('stoma_emp_payroll_ire_employee_settings')->insert($data);
+            
+            $message = 'Employee payroll settings created successfully.';
+        }
+        
+        return redirect()->route('storeowner.employeepayroll.employee-settings')
+            ->with('success', $message);
+    }
 }
 

@@ -8,6 +8,11 @@ import interactionPlugin from '@fullcalendar/interaction';
 import flatpickr from 'flatpickr';
 import $ from 'jquery';
 
+window.$ = window.jQuery = $;
+
+import select2 from 'select2';
+select2(window, $);
+
 window.Alpine = Alpine;
 window.DataTable = DataTable;
 window.FullCalendar = { Calendar };
@@ -16,6 +21,5 @@ window.fullCalendarPlugins = {
     interaction: interactionPlugin
 };
 window.flatpickr = flatpickr;
-window.$ = window.jQuery = $;
 
 Alpine.start();

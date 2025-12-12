@@ -219,9 +219,9 @@ Route::name('storeowner.')->group(function () {
         Route::delete('employeepayroll/{payslipid}', [StoreOwnerEmployeePayrollController::class, 'destroy'])->name('employeepayroll.destroy');
         Route::get('employeepayroll/process_payroll', [StoreOwnerEmployeePayrollController::class, 'processPayroll'])->name('employeepayroll.process-payroll');
         Route::post('employeepayroll/get-week-details', [StoreOwnerEmployeePayrollController::class, 'getWeekDetails'])->name('employeepayroll.get-week-details');
-        Route::get('employeepayroll/employee-settings', function() {
-            return view('storeowner.employeepayroll.employee_settings');
-        })->name('employeepayroll.employee-settings');
+        Route::get('employeepayroll/employee-settings', [StoreOwnerEmployeePayrollController::class, 'employeeSettings'])->name('employeepayroll.employee-settings');
+        Route::get('employeepayroll/edit-employee-settings/{employee_settings_id}', [StoreOwnerEmployeePayrollController::class, 'editEmployeeSettings'])->name('employeepayroll.edit-employee-settings');
+        Route::post('employeepayroll/update-employee-settings', [StoreOwnerEmployeePayrollController::class, 'updateEmployeeSettings'])->name('employeepayroll.update-employee-settings');
 
         // Employee Reviews routes
         Route::get('employeereviews', [StoreOwnerEmployeeReviewsController::class, 'index'])->name('employeereviews.index');
@@ -395,6 +395,7 @@ Route::name('storeowner.')->group(function () {
         Route::get('ajax/get_products_by_supplier_id', [StoreOwnerAjaxController::class, 'getProductsBySupplierId'])->name('ajax.products-by-supplier');
         Route::get('ajax/get_purchase_order_detail', [StoreOwnerAjaxController::class, 'getPurchaseOrderDetail'])->name('ajax.get-purchase-order-detail');
         Route::get('ajax/remove_purchase_order', [StoreOwnerAjaxController::class, 'removePurchaseOrder'])->name('ajax.remove-purchase-order');
+        Route::get('ajax/send_order_sheet', [StoreOwnerAjaxController::class, 'sendOrderSheet'])->name('ajax.send-order-sheet');
         
         // Roster AJAX routes
         Route::post('ajax/get_roster_data', [StoreOwnerAjaxController::class, 'getRosterData'])->name('ajax.get-roster-data');

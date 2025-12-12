@@ -37,6 +37,9 @@
             @csrf
             @method('PUT')
 
+            <!-- Hidden usergroupid field (base64 encoded like CI) -->
+            <input type="hidden" name="usergroupid" value="{{ base64_encode($userGroup->usergroupid) }}" />
+
             <!-- Module Access Levels -->
             <div class="flex items-start gap-4">
                 <label class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">

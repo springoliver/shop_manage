@@ -203,63 +203,83 @@
     </div>
 
     @push('scripts')
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        // Date pickers
-        flatpickr('#date, #date2', {
-            dateFormat: 'd-m-Y',
-            maxDate: 'today'
-        });
-        
-        flatpickr('#date_end, #date_end2', {
-            dateFormat: 'd-m-Y',
-            maxDate: 'today'
-        });
-
-        // Select2 for employee dropdowns
-        $(document).ready(function() {
-            $('#employeeid, #employeeid2').select2({
-                placeholder: 'All Employees',
-                allowClear: true,
-                width: '100%',
-                closeOnSelect: false
-            });
+        // Wait for jQuery and Vite bundle to be fully loaded
+        (function() {
+            var retries = 0;
+            var maxRetries = 50; // 5 seconds max wait (50 * 100ms)
             
-            // Handle exclusive selection: "All Employees" OR individual employees (not both)
-            $('#employeeid, #employeeid2').on('select2:select', function (e) {
-                var data = e.params.data;
-                var $select = $(this);
+            function initClockTime() {
+                // Check if jQuery is available
+                var $ = window.jQuery || window.$;
                 
-                // Use setTimeout to ensure Select2 has processed the selection
-                setTimeout(function() {
-                    var selectedValues = $select.val() || [];
-                    
-                    if (data.id === '') {
-                        // "All Employees" was just selected - clear all other selections
-                        $select.val(['']).trigger('change');
+                if (!$ || typeof $ !== 'function') {
+                    retries++;
+                    if (retries < maxRetries) {
+                        setTimeout(initClockTime, 100);
+                        return;
                     } else {
-                        // An individual employee was just selected - remove "All Employees" if present
-                        var allEmployeesIndex = selectedValues.indexOf('');
-                        if (allEmployeesIndex > -1) {
-                            selectedValues.splice(allEmployeesIndex, 1);
-                            $select.val(selectedValues).trigger('change');
-                        }
+                        console.error('jQuery failed to load after ' + maxRetries + ' retries');
+                        return;
                     }
-                }, 10);
-            });
-            
-            // Also handle on change event as a safety check
-            $('#employeeid, #employeeid2').on('change', function () {
-                var $select = $(this);
-                var selectedValues = $select.val() || [];
-                
-                // If both "All Employees" and individual employees are selected, keep only "All Employees"
-                if (selectedValues.indexOf('') !== -1 && selectedValues.length > 1) {
-                    $select.val(['']).trigger('change');
                 }
-            });
-        });
+                
+                // Ensure DOM is ready
+                $(function() {
+                    // Date pickers
+                    if (typeof flatpickr !== 'undefined') {
+                        flatpickr('#date, #date2', {
+                            dateFormat: 'd-m-Y',
+                            maxDate: 'today'
+                        });
+                        
+                        flatpickr('#date_end, #date_end2', {
+                            dateFormat: 'd-m-Y',
+                            maxDate: 'today'
+                        });
+                    }
+
+                    // Select2 for employee dropdowns - match CI's simple initialization
+                    if (typeof $.fn.select2 !== 'undefined') {
+                        $('#employeeid').select2();
+                        $('#employeeid2').select2();
+                        
+                        // Handle exclusive selection: "All Employees" OR individual employees (not both)
+                        $('#employeeid, #employeeid2').on('select2:select', function (e) {
+                            var data = e.params.data;
+                            var $select = $(this);
+                            
+                            // Use setTimeout to ensure Select2 has updated its internal state
+                            setTimeout(function() {
+                                var selectedValues = $select.val() || [];
+                                
+                                if (data.id === '') {
+                                    // "All Employees" was just selected - clear all other selections
+                                    $select.val(['']).trigger('change');
+                                } else {
+                                    // An individual employee was just selected - remove "All Employees" if present
+                                    if (selectedValues.indexOf('') !== -1) {
+                                        selectedValues = selectedValues.filter(function(val) {
+                                            return val !== '';
+                                        });
+                                        $select.val(selectedValues).trigger('change');
+                                    }
+                                }
+                            }, 100);
+                        });
+                    } else {
+                        console.warn('Select2 plugin not found. Dropdowns will use native select.');
+                    }
+                });
+            }
+            
+            // Start initialization when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initClockTime);
+            } else {
+                initClockTime();
+            }
+        })();
     </script>
     @endpush
 </x-storeowner-app-layout>

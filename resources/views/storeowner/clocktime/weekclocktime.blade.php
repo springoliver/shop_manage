@@ -314,25 +314,59 @@
 
     @push('scripts')
     <script>
-        // Initialize Flatpickr for Add Shift form (datetime format: YYYY-MM-DD HH:MM:SS)
-        flatpickr('#sclockin', {
-            enableTime: true,
-            dateFormat: 'Y-m-d H:i:s',
-            time_24hr: true,
-            allowInput: true
-        });
-        
-        flatpickr('#sclockout', {
-            enableTime: true,
-            dateFormat: 'Y-m-d H:i:s',
-            time_24hr: true,
-            allowInput: true
-        });
+        // Wait for flatpickr to be available
+        (function() {
+            var retries = 0;
+            var maxRetries = 50; // 5 seconds max wait (50 * 100ms)
+            
+            function initDateTimePickers() {
+                // Check if flatpickr is available
+                if (typeof flatpickr === 'undefined') {
+                    retries++;
+                    if (retries < maxRetries) {
+                        setTimeout(initDateTimePickers, 100);
+                        return;
+                    } else {
+                        console.error('flatpickr failed to load after ' + maxRetries + ' retries');
+                        return;
+                    }
+                }
+                
+                // Initialize Flatpickr for Add Shift form (datetime format: YYYY-MM-DD HH:MM:SS)
+                flatpickr('#sclockin', {
+                    enableTime: true,
+                    dateFormat: 'Y-m-d H:i:s',
+                    time_24hr: true,
+                    allowInput: true
+                });
+                
+                flatpickr('#sclockout', {
+                    enableTime: true,
+                    dateFormat: 'Y-m-d H:i:s',
+                    time_24hr: true,
+                    allowInput: true
+                });
+            }
+            
+            // Start initialization when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initDateTimePickers);
+            } else {
+                initDateTimePickers();
+            }
+        })();
 
         // Initialize Flatpickr for Edit Modal (will be reinitialized when modal opens)
         let clockInPicker, clockOutPicker;
 
         function editClockInOutData(eltid) {
+            // Check if flatpickr is available
+            if (typeof flatpickr === 'undefined') {
+                console.error('flatpickr is not available');
+                alert('Date picker is not loaded. Please refresh the page.');
+                return;
+            }
+            
             // Fetch clock in-out data via AJAX
             fetch('{{ route("storeowner.clocktime.edit-clock-inout") }}', {
                 method: 'POST',
@@ -350,9 +384,11 @@
                 // Destroy existing pickers if they exist
                 if (clockInPicker) {
                     clockInPicker.destroy();
+                    clockInPicker = null;
                 }
                 if (clockOutPicker) {
                     clockOutPicker.destroy();
+                    clockOutPicker = null;
                 }
                 
                 // Set values
