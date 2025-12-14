@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StoreSupplier;
 use App\Models\Department;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -13,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 
 class SupplierController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -22,11 +24,16 @@ class SupplierController extends Controller
 
     /**
      * Check if Suppliers module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Suppliers')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -46,8 +53,7 @@ class SupplierController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
             ->orderBy('supplierid', 'DESC')
@@ -66,8 +72,7 @@ class SupplierController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get departments for the store (including storeid = 0 for global departments)
         $departments = Department::where(function($query) use ($storeid) {
@@ -93,8 +98,7 @@ class SupplierController extends Controller
         $supplierid = base64_decode($supplierid);
         $storeSupplier = StoreSupplier::findOrFail($supplierid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify supplier belongs to store
         if ($storeSupplier->storeid != $storeid) {
@@ -123,8 +127,7 @@ class SupplierController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('supplierid') && !empty($request->supplierid)) {
             // Update existing
@@ -206,8 +209,7 @@ class SupplierController extends Controller
         $supplierid = base64_decode($supplierid);
         $supplier = StoreSupplier::findOrFail($supplierid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify supplier belongs to store
         if ($supplier->storeid != $storeid) {
@@ -239,8 +241,7 @@ class SupplierController extends Controller
         $supplierid = base64_decode($validated['supplierid']);
         $supplier = StoreSupplier::findOrFail($supplierid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify supplier belongs to store
         if ($supplier->storeid != $storeid) {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Resignation;
 use App\Models\StoreEmployee;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,7 @@ use Illuminate\View\View;
 
 class ResignationController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -22,11 +24,16 @@ class ResignationController extends Controller
 
     /**
      * Check if Resignation module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Resignation')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -46,8 +53,7 @@ class ResignationController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $resignations = Resignation::with('employee')
             ->where('storeid', $storeid)
@@ -70,8 +76,7 @@ class ResignationController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $query = Resignation::with('employee')
             ->where('storeid', $storeid)
@@ -167,8 +172,7 @@ class ResignationController extends Controller
             $search = $searchParts[0];
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $resignations = Resignation::with('employee')
             ->where('storeid', $storeid)

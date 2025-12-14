@@ -57,7 +57,7 @@ class PayrollController extends Controller
                     'lastname' => $payroll->lastname ?? '',
                     'store_name' => $payroll->store_name ?? '',
                     'payslipname' => $payroll->payslipname ?? '',
-                    'weekid' => $payroll->weekid,
+                    'weeknumber' => $payroll->weeknumber ?? '',
                 ];
             });
         

@@ -96,7 +96,7 @@
                                     <div class="text-sm text-gray-900">{{ $payroll['payslipname'] }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $payroll['weekid'] }}</div>
+                                    <div class="text-sm text-gray-900">{{ $payroll['weeknumber'] }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-3">

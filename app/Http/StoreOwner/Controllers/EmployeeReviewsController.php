@@ -8,6 +8,7 @@ use App\Models\EmployeeReviewSubject;
 use App\Models\StoreEmployee;
 use App\Models\UserGroup;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,7 @@ use Carbon\Carbon;
 
 class EmployeeReviewsController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -26,11 +28,16 @@ class EmployeeReviewsController extends Controller
 
     /**
      * Check if Employee Reviews module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Employee Reviews')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -50,8 +57,7 @@ class EmployeeReviewsController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get all employees with review count
         $employees = DB::table('stoma_employee as e')
@@ -82,8 +88,7 @@ class EmployeeReviewsController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get all reviews grouped by employee and review date
         $reviews = DB::table('stoma_employee_reviews_new as er')
@@ -113,8 +118,7 @@ class EmployeeReviewsController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get reviews due within 15 days
         $reviews = DB::table('stoma_employee_reviews_new as er')
@@ -148,8 +152,7 @@ class EmployeeReviewsController extends Controller
         }
         
         $employeeid = base64_decode($employeeid);
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get all reviews for this employee, grouped by review date
         $reviews = DB::table('stoma_employee_reviews_new as er')
@@ -182,8 +185,7 @@ class EmployeeReviewsController extends Controller
         }
         
         $employeeid = base64_decode($employeeid);
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get employee details
         $employee = StoreEmployee::findOrFail($employeeid);
@@ -227,8 +229,7 @@ class EmployeeReviewsController extends Controller
             'review_subjectid.min' => 'Please add at least one review subject. If no subjects are available, please add review subjects first.',
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employeeid = base64_decode($validated['employeeid']);
         $reviewSubjects = $validated['review_subjectid'];
@@ -384,8 +385,7 @@ class EmployeeReviewsController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $subjects = DB::table('stoma_employee_review_subjects as ers')
             ->select('ers.*', 'u.groupname')
@@ -407,8 +407,7 @@ class EmployeeReviewsController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $userGroups = UserGroup::where('storeid', $storeid)->get();
         
@@ -458,8 +457,7 @@ class EmployeeReviewsController extends Controller
                 'subject_name' => 'required|string|max:255',
             ]);
             
-            $user = Auth::guard('storeowner')->user();
-            $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+            $storeid = $this->getStoreId();
             
             EmployeeReviewSubject::create([
                 'storeid' => $storeid,
@@ -489,8 +487,7 @@ class EmployeeReviewsController extends Controller
         $review_subjectid = base64_decode($review_subjectid);
         $subject = EmployeeReviewSubject::with('userGroup')->findOrFail($review_subjectid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $userGroups = UserGroup::where('storeid', $storeid)->get();
         

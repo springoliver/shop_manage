@@ -7,6 +7,7 @@ use App\Models\StoreEmployee;
 use App\Models\EmpLoginTime;
 use App\Services\StoreOwner\ModuleService;
 use App\Services\StoreOwner\ClockTimeService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +18,7 @@ use Mpdf\Mpdf;
 
 class ClockTimeController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
     protected ClockTimeService $clockTimeService;
 
@@ -28,11 +30,16 @@ class ClockTimeController extends Controller
 
     /**
      * Check if Clock in-out module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Clock in-out')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -52,8 +59,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $clockDetails = $this->clockTimeService->getClockDetails($storeid);
         $employees = StoreEmployee::where('storeid', $storeid)
@@ -85,8 +91,7 @@ class ClockTimeController extends Controller
             'employeeid.*' => 'nullable', // Allow empty strings for "All Employees"
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Parse dd-mm-yyyy format
         $date = Carbon::createFromFormat('d-m-Y', $validated['date'])->format('Y-m-d');
@@ -166,8 +171,7 @@ class ClockTimeController extends Controller
             'employeeid.*' => 'nullable', // Allow empty strings for "All Employees"
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Parse dd-mm-yyyy format
         try {
@@ -319,8 +323,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $empPayrollHrs = $this->clockTimeService->getEmployeeHolidayCalculation($storeid);
         
@@ -337,8 +340,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $empPayrollHrs = $this->clockTimeService->getAllWeekHrs($storeid);
         
@@ -355,8 +357,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $empPayrollHrs = $this->clockTimeService->getAllEmployeesWeekHrs($storeid);
         
@@ -373,8 +374,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $empPayrollHrs = $this->clockTimeService->getMonthlyHrsAllEmployee($storeid);
         
@@ -391,8 +391,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employeeid = base64_decode($employeeid);
         $date = Carbon::parse($date);
@@ -448,8 +447,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = Carbon::parse($date);
         $weekNumber = (int)$date->format('W');
@@ -497,8 +495,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::find($employeeid);
@@ -522,8 +519,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $year = base64_decode($year);
         $empPayrollHrs = $this->clockTimeService->getAllYearlyHrsAllEmployee($storeid, $year);
@@ -541,8 +537,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employeeid = base64_decode($employeeid);
         $year = base64_decode($year);
@@ -572,8 +567,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $empPayrollHrs = $this->clockTimeService->getEmployeeHolidayCalculation($storeid);
         
@@ -593,8 +587,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $year = base64_decode($year);
         $empPayrollHrs = $this->clockTimeService->getAllYearlyHrsAllEmployee($storeid, $year);
@@ -615,8 +608,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::find($employeeid);
@@ -640,8 +632,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $weekno = base64_decode($weekno);
         $year = base64_decode($year);
@@ -685,8 +676,7 @@ class ClockTimeController extends Controller
             'clockout' => 'required|date|after:clockin',
         ]);
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $clockTime = EmpLoginTime::where('eltid', $validated['eltid'])
             ->where('storeid', $storeid)
@@ -726,8 +716,7 @@ class ClockTimeController extends Controller
             'inRoster' => 'required|string',
         ]);
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $clockInDate = \Carbon\Carbon::parse($validated['sclockin']);
         
@@ -758,8 +747,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         try {
             $eltid = base64_decode($eltid);
@@ -790,8 +778,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // TODO: Implement payslip generation
         // For now, redirect back with info message
@@ -808,8 +795,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = Carbon::parse($date);
         $weekNumber = (int)$date->format('W');
@@ -843,8 +829,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
 
         // TODO: Implement upload functionality
         // This should save the hours to a dashboard/payroll table
@@ -862,8 +847,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = Carbon::parse($date);
         $weekNumber = (int)$date->format('W');
@@ -963,8 +947,7 @@ class ClockTimeController extends Controller
             return $moduleCheck;
         }
 
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
 
         // TODO: Implement upload functionality to save to stoma_emp_payroll_hrs table
         // This should save the hours to a dashboard/payroll table

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PurchaseOrderCategory;
 use App\Models\SupplierDocType;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -13,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 
 class OrderingSettingController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -22,11 +24,16 @@ class OrderingSettingController extends Controller
 
     /**
      * Check if Ordering module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Ordering')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -46,8 +53,7 @@ class OrderingSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $purchaseCategories = PurchaseOrderCategory::where('storeid', $storeid)
             ->orderBy('categoryid', 'DESC')
@@ -70,8 +76,7 @@ class OrderingSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('categoryid') && !empty($request->categoryid)) {
             // Update existing
@@ -132,8 +137,7 @@ class OrderingSettingController extends Controller
         $categoryid = base64_decode($categoryid);
         $category = PurchaseOrderCategory::findOrFail($categoryid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify category belongs to store
         if ($category->storeid != $storeid) {
@@ -157,8 +161,7 @@ class OrderingSettingController extends Controller
         $categoryid = base64_decode($categoryid);
         $category = PurchaseOrderCategory::findOrFail($categoryid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify category belongs to store
         if ($category->storeid != $storeid) {
@@ -182,8 +185,7 @@ class OrderingSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('docs_type_id') && !empty($request->docs_type_id)) {
             // Update existing
@@ -244,8 +246,7 @@ class OrderingSettingController extends Controller
         $docs_type_id = base64_decode($docs_type_id);
         $docType = SupplierDocType::findOrFail($docs_type_id);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify doc type belongs to store
         if ($docType->storeid != $storeid) {
@@ -269,8 +270,7 @@ class OrderingSettingController extends Controller
         $docs_type_id = base64_decode($docs_type_id);
         $docType = SupplierDocType::findOrFail($docs_type_id);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify doc type belongs to store
         if ($docType->storeid != $storeid) {

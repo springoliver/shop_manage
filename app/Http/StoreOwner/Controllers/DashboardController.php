@@ -5,6 +5,7 @@ namespace App\Http\StoreOwner\Controllers;
 use App\Http\Controllers\Controller;
 use App\Services\StoreOwner\DashboardService;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use App\Models\Store;
 use App\Models\DashboardSettings;
 use App\Models\Department;
@@ -19,6 +20,7 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected DashboardService $dashboardService;
     protected ModuleService $moduleService;
 
@@ -33,8 +35,7 @@ class DashboardController extends Controller
      */
     public function index(Request $request): View|RedirectResponse
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get installed modules
         $installedModules = $this->moduleService->getInstalledModules($storeid);
@@ -102,12 +103,20 @@ class DashboardController extends Controller
         // Yearly Sales
         $dailyYearlyReport = $this->getYearlyReports();
 
-        // Get stores
-        $stores = Store::where('storeownerid', $user->ownerid)->get();
-        if ($stores->count() < 1) {
-            Auth::guard('storeowner')->logout();
-            return redirect()->route('storeowner.login')
-                ->with('error', 'Your store does not verified. Please contact to admin.');
+        // Get stores - handle both storeowner and employee
+        $storeowner = Auth::guard('storeowner')->user();
+        if ($storeowner) {
+            // For storeowners, check if they have stores
+            $stores = Store::where('storeownerid', $storeowner->ownerid)->get();
+            if ($stores->count() < 1) {
+                Auth::guard('storeowner')->logout();
+                return redirect()->route('storeowner.login')
+                    ->with('error', 'Your store does not verified. Please contact to admin.');
+            }
+        } else {
+            // For employees, get their store
+            $employee = Auth::guard('employee')->user();
+            $stores = $employee && $employee->storeid ? collect([Store::find($employee->storeid)])->filter() : collect();
         }
 
         // Week Navigation Logic
@@ -428,8 +437,7 @@ class DashboardController extends Controller
      */
     protected function getMonthlyReports(): array
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
 
         $result = DB::table('stoma_daily_report')
             ->select(DB::raw('SUM(total_sell) as total_sell'), DB::raw('SUM(s_safe) as s_safe'))
@@ -453,8 +461,7 @@ class DashboardController extends Controller
      */
     protected function getYearlyReports(): array
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
 
         $result = DB::table('stoma_daily_report')
             ->select(DB::raw('SUM(total_sell) as total_yearly_sell'), DB::raw('SUM(s_safe) as s_yearly_safe'))
@@ -512,8 +519,7 @@ class DashboardController extends Controller
      */
     public function settings(Request $request)
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
 
         $response = ['status' => 0, 'data' => []];
 
@@ -542,8 +548,7 @@ class DashboardController extends Controller
      */
     public function getSettings()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
 
         $response = ['status' => 0, 'data' => []];
         

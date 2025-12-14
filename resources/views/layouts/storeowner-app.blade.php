@@ -20,12 +20,27 @@
 <body class="font-sans antialiased">
 
     @php
-    $user = Auth::guard('storeowner')->user();
-    $stores = $user->stores ?? collect();
+    // Check both guards - employees can access storeowner routes with proper permissions
+    $storeowner = Auth::guard('storeowner')->user();
+    $employee = Auth::guard('employee')->user();
+    $user = $storeowner ?? $employee;
+    
+    // Get stores - storeowners have multiple stores, employees have a single storeid
+    if ($storeowner) {
+        $stores = $storeowner->stores ?? collect();
+    } else {
+        // For employees, create a collection with their single store
+        $storeid = $employee ? $employee->storeid : 0;
+        $stores = $storeid ? collect([\App\Models\Store::find($storeid)])->filter() : collect();
+    }
     
     // Build dynamic menu based on installed modules
-    $moduleService = app(\App\Services\StoreOwner\ModuleService::class);
-    $menuService = app(\App\Services\StoreOwner\MenuService::class);
+    // Use employee menu service if employee is accessing, otherwise use storeowner menu service
+    if ($employee) {
+        $menuService = app(\App\Services\Employee\MenuService::class);
+    } else {
+        $menuService = app(\App\Services\StoreOwner\MenuService::class);
+    }
     $navigation = $menuService->buildMenu();
     @endphp
 
@@ -51,7 +66,7 @@
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div>{{ $user->username }}</div>
+                            <div>{{ $user ? ($user->username ?? ($employee ? trim($employee->firstname . ' ' . $employee->lastname) : 'User')) : 'User' }}</div>
 
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -62,20 +77,38 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('storeowner.profile.edit')">
-                            {{ __('Profile') }}
-                        </x-dropdown-link>
-
-                        <!-- Authentication -->
-                        <form method="POST" action="{{ route('storeowner.logout') }}">
-                            @csrf
-
-                            <x-dropdown-link :href="route('storeowner.logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
-                                {{ __('Log Out') }}
+                        @if($storeowner)
+                            <x-dropdown-link :href="route('storeowner.profile.edit')">
+                                {{ __('Profile') }}
                             </x-dropdown-link>
-                        </form>
+
+                            <!-- Authentication -->
+                            <form method="POST" action="{{ route('storeowner.logout') }}">
+                                @csrf
+
+                                <x-dropdown-link :href="route('storeowner.logout')"
+                                        onclick="event.preventDefault();
+                                                    this.closest('form').submit();">
+                                    {{ __('Log Out') }}
+                                </x-dropdown-link>
+                            </form>
+                        @elseif($employee)
+                            <!-- For employees, show employee profile link -->
+                            <x-dropdown-link :href="route('employee.profile.edit')">
+                                {{ __('Profile') }}
+                            </x-dropdown-link>
+
+                            <!-- Authentication -->
+                            <form method="POST" action="{{ route('employee.logout') }}">
+                                @csrf
+
+                                <x-dropdown-link :href="route('employee.logout')"
+                                        onclick="event.preventDefault();
+                                                    this.closest('form').submit();">
+                                    {{ __('Log Out') }}
+                                </x-dropdown-link>
+                            </form>
+                        @endif
                     </x-slot>
                 </x-dropdown>
             </div>

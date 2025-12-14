@@ -10,6 +10,7 @@ use App\Models\Year;
 use App\Models\EmpPayrollHrs;
 use App\Services\StoreOwner\ModuleService;
 use App\Services\StoreOwner\RosterService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 
 class EmployeePayrollController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
     protected RosterService $rosterService;
 
@@ -31,11 +33,16 @@ class EmployeePayrollController extends Controller
 
     /**
      * Check if Employee Payroll module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Employee Payroll')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -55,8 +62,7 @@ class EmployeePayrollController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $payslips = DB::table('stoma_payslip as p')
             ->select(
@@ -102,8 +108,7 @@ class EmployeePayrollController extends Controller
         }
         
         $employeeid = base64_decode($employeeid);
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $payslips = DB::table('stoma_payslip as p')
             ->select('p.*', 's.store_name', 'e.firstname', 'e.lastname', 'e.usergroupid', 'e.emailid', 'u.groupname', 'w.weeknumber')
@@ -130,8 +135,7 @@ class EmployeePayrollController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employees = StoreEmployee::where('storeid', $storeid)
             ->where('status', 'Active')
@@ -171,8 +175,7 @@ class EmployeePayrollController extends Controller
             'doc' => 'required|file|mimes:pdf|max:51200', // 50MB
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->hasFile('doc')) {
             $file = $request->file('doc');
@@ -322,8 +325,7 @@ class EmployeePayrollController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get all payroll hours grouped by employee, week, and year
         $payrollHrs = DB::table('stoma_emp_payroll_hrs as ep')
@@ -403,8 +405,7 @@ class EmployeePayrollController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get all employees for dropdown
         $employees = StoreEmployee::where('storeid', $storeid)
@@ -452,8 +453,7 @@ class EmployeePayrollController extends Controller
         }
         
         $employeeSettingsId = base64_decode($employeeSettingsId);
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get existing settings
         $existingSettings = DB::table('stoma_emp_payroll_ire_employee_settings as ep')
@@ -517,8 +517,7 @@ class EmployeePayrollController extends Controller
             'employeeid' => 'required|integer',
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         $employeeSettingsId = $request->input('employee_settings_id');
         
         // Parse date if provided

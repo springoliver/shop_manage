@@ -14,6 +14,7 @@ use App\Models\Week;
 use App\Models\Year;
 use App\Models\StoreEmployee;
 use App\Models\Department;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,7 @@ use PHPMailer\PHPMailer\Exception;
 
 class AjaxController extends Controller
 {
+    use HandlesEmployeeAccess;
     /**
      * Get products by supplier ID.
      */
@@ -34,8 +36,7 @@ class AjaxController extends Controller
             return Response::json(['data' => []]);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $products = DB::table('stoma_store_products as sp')
             ->select(
@@ -73,8 +74,7 @@ class AjaxController extends Controller
             return Response::json(['purchase_order' => null, 'data' => []]);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get purchase order with supplier and store info
         $purchaseOrder = PurchaseOrder::with(['supplier', 'store'])
@@ -141,8 +141,7 @@ class AjaxController extends Controller
             return Response::json(['status' => false]);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         try {
             // Delete purchased products first (due to foreign key constraint)
@@ -172,8 +171,7 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Employee ID required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $rosters = Roster::where('employeeid', $employeeid)
             ->where('storeid', $storeid)
@@ -198,8 +196,7 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Employee ID required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $weekid = null;
         $rosters = collect();
@@ -270,8 +267,7 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Employee ID required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = date('Y-m-d');
         $weeknumber = (int) date('W');
@@ -316,8 +312,7 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Employee ID and Week ID required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get rosters keyed by day (matching CI's structure)
         $rostersCollection = WeekRoster::where('employeeid', $employeeid)
@@ -364,8 +359,7 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Week number required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = new \DateTime($weeknumber);
         $weekStart = clone $date;
@@ -410,8 +404,7 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Employee ID required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get department max day hours
         $employee = StoreEmployee::with('department')->find($employeeid);
@@ -475,8 +468,7 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Employee ID required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get department max day hours
         $employee = StoreEmployee::with('department')->find($employeeid);
@@ -536,8 +528,7 @@ class AjaxController extends Controller
             return Response::json(['status' => false, 'message' => 'Purchase Order ID required']);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         try {
             // Get purchase order with supplier and store info

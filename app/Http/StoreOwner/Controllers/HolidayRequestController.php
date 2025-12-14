@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HolidayRequest;
 use App\Models\StoreEmployee;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,7 @@ use Illuminate\View\View;
 
 class HolidayRequestController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -22,11 +24,16 @@ class HolidayRequestController extends Controller
 
     /**
      * Check if Time Off Request module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Time Off Request')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -46,8 +53,7 @@ class HolidayRequestController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $holidayRequests = HolidayRequest::with('employee')
             ->where('storeid', $storeid)
@@ -70,8 +76,7 @@ class HolidayRequestController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get active employees (excluding those in emp_payroll_ire_employee_settings if that table exists)
         // For now, just get all active employees
@@ -101,8 +106,7 @@ class HolidayRequestController extends Controller
             'description' => 'required|string',
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         HolidayRequest::create([
             'storeid' => $storeid,
@@ -150,8 +154,7 @@ class HolidayRequestController extends Controller
         $requestid = base64_decode($requestid);
         $holidayRequest = HolidayRequest::with('employee')->findOrFail($requestid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employees = StoreEmployee::where('storeid', $storeid)
             ->where('status', 'Active')
@@ -268,8 +271,7 @@ class HolidayRequestController extends Controller
             return response()->json(['error' => 'Module not installed'], 403);
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $holidayRequests = HolidayRequest::with('employee')
             ->where('storeid', $storeid)
@@ -323,8 +325,7 @@ class HolidayRequestController extends Controller
         }
         
         $employeeid = $request->input('employeeid');
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $requests = HolidayRequest::with('employee')
             ->where('storeid', $storeid)
@@ -345,8 +346,7 @@ class HolidayRequestController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $query = HolidayRequest::with('employee')
             ->where('storeid', $storeid)
@@ -379,8 +379,7 @@ class HolidayRequestController extends Controller
             $search = $searchParts[0];
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $holidayRequests = HolidayRequest::with('employee')
             ->where('storeid', $storeid)

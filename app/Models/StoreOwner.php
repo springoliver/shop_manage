@@ -44,6 +44,7 @@ class StoreOwner extends Authenticatable implements MustVerifyEmail
         'username',
         'emailid',
         'password',
+        'remember_token',
         'profile_photo',
         'phone',
         'country',

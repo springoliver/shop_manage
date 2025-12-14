@@ -12,6 +12,7 @@ use App\Models\PurchasePaymentMethod;
 use App\Models\PurchaseMeasure;
 use App\Models\TaxSetting;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 
 class ProductController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -29,11 +31,16 @@ class ProductController extends Controller
 
     /**
      * Check if Products module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Products')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -53,8 +60,7 @@ class ProductController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $storeProducts = DB::table('stoma_store_products as sp')
             ->select(
@@ -89,8 +95,7 @@ class ProductController extends Controller
         }
         
         $supplierid = base64_decode($supplierid);
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get supplier info
         $supplier = StoreSupplier::where('supplierid', $supplierid)
@@ -126,8 +131,7 @@ class ProductController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get all dropdown data
         $catalogProductGroups = CatalogProductGroup::where('storeid', $storeid)->get();
@@ -172,8 +176,7 @@ class ProductController extends Controller
         $productid = base64_decode($productid);
         $storeProduct = StoreProduct::findOrFail($productid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify product belongs to store
         if ($storeProduct->storeid != $storeid) {
@@ -222,8 +225,7 @@ class ProductController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('productid') && !empty($request->productid)) {
             // Update existing
@@ -317,8 +319,7 @@ class ProductController extends Controller
         $productid = base64_decode($productid);
         $product = StoreProduct::findOrFail($productid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify product belongs to store
         if ($product->storeid != $storeid) {
@@ -350,8 +351,7 @@ class ProductController extends Controller
         $productid = base64_decode($validated['productid']);
         $product = StoreProduct::findOrFail($productid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify product belongs to store
         if ($product->storeid != $storeid) {
@@ -390,8 +390,7 @@ class ProductController extends Controller
         $productid = base64_decode($validated['productid']);
         $product = StoreProduct::findOrFail($productid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Verify product belongs to store
         if ($product->storeid != $storeid) {

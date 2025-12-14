@@ -14,6 +14,7 @@ use App\Models\PosDiscount;
 use App\Models\PosModifier;
 use App\Models\UserGroup;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,7 @@ use Illuminate\Http\RedirectResponse;
 
 class PosSettingController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -32,11 +34,16 @@ class PosSettingController extends Controller
 
     /**
      * Check if Point Of Sale module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Point Of Sale')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -56,8 +63,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $sections = PosFloorSection::where('storeid', $storeid)
             ->orderBy('pos_section_list_number', 'ASC')
@@ -76,8 +82,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $sections = PosFloorSection::where('storeid', $storeid)
             ->orderBy('pos_section_list_number', 'ASC')
@@ -112,8 +117,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_floor_section_id') && !empty($request->pos_floor_section_id)) {
             // Update existing
@@ -188,8 +192,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $sections = PosFloorSection::where('storeid', $storeid)->get();
         
@@ -216,8 +219,7 @@ class PosSettingController extends Controller
         $pos_floor_table_id = base64_decode($pos_floor_table_id);
         $table = PosFloorTable::findOrFail($pos_floor_table_id);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $sections = PosFloorSection::where('storeid', $storeid)->get();
         
@@ -234,8 +236,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_floor_table_id') && !empty($request->pos_floor_table_id)) {
             // Update existing
@@ -320,8 +321,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $printers = PosReceiptPrinter::where('storeid', $storeid)->get();
         
@@ -354,8 +354,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_receiptprinters_id') && !empty($request->pos_receiptprinters_id)) {
             // Update existing
@@ -477,8 +476,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $salesTypes = PosSalesType::where('storeid', $storeid)->get();
         
@@ -511,8 +509,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_sales_types_id') && !empty($request->pos_sales_types_id)) {
             // Update existing
@@ -578,8 +575,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $paymentTypes = PosPaymentType::where('storeid', $storeid)->get();
         
@@ -612,8 +608,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_payment_types_id') && !empty($request->pos_payment_types_id)) {
             // Update existing
@@ -679,8 +674,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $refundReasons = DB::table('stoma_pos_refund_reasons as pr')
             ->select('pr.*', 'u.groupname')
@@ -712,8 +706,7 @@ class PosSettingController extends Controller
         $pos_refund_reason_id = base64_decode($pos_refund_reason_id);
         $refundReason = PosRefundReason::findOrFail($pos_refund_reason_id);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get user groups for dropdown
         $userGroups = DB::table('stoma_store_usergroup as su')
@@ -736,8 +729,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_refund_reason_id') && !empty($request->pos_refund_reason_id)) {
             // Update existing
@@ -807,8 +799,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $gratuities = PosGratuity::where('storeid', $storeid)->get();
         
@@ -841,8 +832,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_graduity_id') && !empty($request->pos_graduity_id)) {
             // Update existing
@@ -912,8 +902,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $discounts = PosDiscount::where('storeid', $storeid)->get();
         
@@ -946,8 +935,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_discount_id') && !empty($request->pos_discount_id)) {
             // Update existing
@@ -1017,8 +1005,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get modifiers with product group names if table exists
         $modifiers = PosModifier::where('storeid', $storeid)->get();
@@ -1066,8 +1053,7 @@ class PosSettingController extends Controller
         $pos_modifiers_id = base64_decode($pos_modifiers_id);
         $modifier = PosModifier::findOrFail($pos_modifiers_id);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get catalog product groups for dropdown
         $productGroups = [];
@@ -1090,8 +1076,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('pos_modifiers_id') && !empty($request->pos_modifiers_id)) {
             // Update existing
@@ -1175,8 +1160,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $sections = PosFloorSection::where('storeid', $storeid)
             ->orderBy('pos_section_list_number', 'ASC')
@@ -1199,8 +1183,7 @@ class PosSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $pos_floor_section_id = base64_decode($pos_floor_section_id);
         

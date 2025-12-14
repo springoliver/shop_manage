@@ -27,13 +27,23 @@ class MenuService
      */
     public function buildMenu(): array
     {
-        // Get installed modules with access levels for this employee
+        // Get installed modules with access levels for this employee (for admin/management items)
         $installedModules = $this->moduleService->getInstalledModulesForEmployee($this->storeid, $this->employeeid);
         
-        // Create a map of module name to access level for quick lookup
+        // Also get all installed modules (regardless of access level) for personal menu items
+        // Personal menu items (My Roster, My Payroll, etc.) should always show if module is installed
+        $allInstalledModules = $this->moduleService->getInstalledModules($this->storeid);
+        
+        // Create a map of module name to access level for quick lookup (for admin/management items)
         $moduleAccessMap = [];
         foreach ($installedModules as $module) {
             $moduleAccessMap[$module['module']] = $module['level'] ?? 'None';
+        }
+        
+        // Create a map of all installed modules (for personal menu items)
+        $allInstalledModulesMap = [];
+        foreach ($allInstalledModules as $module) {
+            $allInstalledModulesMap[$module['module']] = true;
         }
         
         $menu = [
@@ -53,8 +63,10 @@ class MenuService
             ],
         ];
         
-        // My Roster - shown if Roster module is installed
-        if (isset($moduleAccessMap['Roster'])) {
+        // Personal menu items - always show if module is installed (regardless of access level)
+        // These are employee's own data, different from admin/management features
+        // My Roster - shown if Roster module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Roster'])) {
             $menu[] = [
                 'label' => 'My Roster',
                 'route' => 'employee.roster.index',
@@ -64,8 +76,8 @@ class MenuService
             ];
         }
         
-        // My Payroll - shown if Clock in-out module is installed
-        if (isset($moduleAccessMap['Clock in-out'])) {
+        // My Payroll - shown if Clock in-out module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Clock in-out'])) {
             $menu[] = [
                 'label' => 'My Payroll',
                 'route' => 'employee.payroll.index',
@@ -75,8 +87,8 @@ class MenuService
             ];
         }
         
-        // My Documents - shown if Employee Documents module is installed
-        if (isset($moduleAccessMap['Employee Documents'])) {
+        // My Documents - shown if Employee Documents module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Employee Documents'])) {
             $menu[] = [
                 'label' => 'My Documents',
                 'route' => 'employee.document.index',
@@ -86,8 +98,8 @@ class MenuService
             ];
         }
         
-        // Time of request - shown if Time Off Request module is installed
-        if (isset($moduleAccessMap['Time Off Request'])) {
+        // Time of request - shown if Time Off Request module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Time Off Request'])) {
             $menu[] = [
                 'label' => 'Time of request',
                 'route' => 'employee.holidayrequest.index',
@@ -97,8 +109,8 @@ class MenuService
             ];
         }
         
-        // Resignation - shown if Resignation module is installed
-        if (isset($moduleAccessMap['Resignation'])) {
+        // Resignation - shown if Resignation module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Resignation'])) {
             $menu[] = [
                 'label' => 'Resignation',
                 'route' => 'employee.resignation.index',
@@ -108,8 +120,8 @@ class MenuService
             ];
         }
         
-        // Store Documents submenu
-        if (isset($moduleAccessMap['Store Documents'])) {
+        // Store Documents submenu - check level (menus with submenus should respect access level)
+        if (isset($moduleAccessMap['Store Documents']) && $moduleAccessMap['Store Documents'] != 'None') {
             $storeDocsSubmenu = [];
             
             if (Route::has('storeowner.storedocument.index')) {
@@ -132,8 +144,11 @@ class MenuService
             }
         }
         
-        // POS (Point Of Sale) - shown if Point Of Sale module is installed
-        if (isset($moduleAccessMap['Point Of Sale'])) {
+        // POS (Point Of Sale) - check if it has submenu in store owner
+        // If it has submenu, check level. If it's a direct link, always show.
+        // Based on store owner sidebar, POS has submenu, so check level
+        if (isset($moduleAccessMap['Point Of Sale']) && $moduleAccessMap['Point Of Sale'] != 'None') {
+            // For now, POS is a direct link in employee sidebar (matches CI)
             $menu[] = [
                 'label' => 'POS (Point Of Sale)',
                 'route' => 'employee.pos.index',
@@ -190,7 +205,7 @@ class MenuService
                     'label' => 'Clock in-out',
                     'route' => 'storeowner.clocktime.index',
                     'enabled' => true,
-                    'icon' => '<i class="fa fa-clock-o"></i>',
+                    'icon' => '<i class="fa fa-clock"></i>',
                     'type' => 'link',
                 ];
             }
@@ -258,8 +273,8 @@ class MenuService
             ];
         }
         
-        // Daily Management submenu - shown if Daily Report module is installed
-        if (isset($moduleAccessMap['Daily Report'])) {
+        // Daily Management submenu - shown if Daily Report module is installed AND level != 'None'
+        if (isset($moduleAccessMap['Daily Report']) && $moduleAccessMap['Daily Report'] != 'None') {
             $dailyMgmtSubmenu = [];
             
             if (Route::has('storeowner.dailyreport.index')) {
@@ -321,8 +336,8 @@ class MenuService
             ];
         }
         
-        // Purchase Order submenu - shown if Ordering module is installed
-        if (isset($moduleAccessMap['Ordering'])) {
+        // Purchase Order submenu - shown if Ordering module is installed AND level != 'None'
+        if (isset($moduleAccessMap['Ordering']) && $moduleAccessMap['Ordering'] != 'None') {
             $poSubmenu = [];
             
             if (Route::has('storeowner.ordering.order')) {

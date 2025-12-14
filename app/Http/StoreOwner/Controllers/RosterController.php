@@ -11,6 +11,7 @@ use App\Models\StoreEmployee;
 use App\Models\Department;
 use App\Services\StoreOwner\RosterService;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,7 @@ use Illuminate\View\View;
 
 class RosterController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected RosterService $rosterService;
     protected ModuleService $moduleService;
 
@@ -31,11 +33,16 @@ class RosterController extends Controller
     /**
      * Check if Roster module is installed.
      * Redirects to module settings if not installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Roster')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -44,6 +51,7 @@ class RosterController extends Controller
         
         return null;
     }
+    
 
     /**
      * Display a listing of base rosters.
@@ -55,8 +63,7 @@ class RosterController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get employees without rosters
         $employees = $this->rosterService->getEmployeesWithoutRoster($storeid);
@@ -108,8 +115,7 @@ class RosterController extends Controller
         }
         
         $departmentid = base64_decode($departmentid);
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get employees without rosters
         $employees = $this->rosterService->getEmployeesWithoutRoster($storeid);
@@ -164,8 +170,7 @@ class RosterController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $validated = $request->validate([
             'employeeid' => 'required|integer',
@@ -237,8 +242,7 @@ class RosterController extends Controller
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::findOrFail($employeeid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get existing roster
         $rosters = Roster::where('employeeid', $employeeid)
@@ -262,8 +266,7 @@ class RosterController extends Controller
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::findOrFail($employeeid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $validated = $request->validate([
             'Sunday_start' => 'required',
@@ -331,8 +334,7 @@ class RosterController extends Controller
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::findOrFail($employeeid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         Roster::where('employeeid', $employee->employeeid)
             ->where('storeid', $storeid)
@@ -355,8 +357,7 @@ class RosterController extends Controller
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::findOrFail($employeeid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $rosters = Roster::where('employeeid', $employee->employeeid)
             ->where('storeid', $storeid)
@@ -376,8 +377,7 @@ class RosterController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get all base rosters to show employees
         $weekroster = $this->rosterService->getAllRosters($storeid);
@@ -410,8 +410,7 @@ class RosterController extends Controller
             'weeknumber' => 'required|date',
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Parse week number and year from date
         $date = new \DateTime($validated['weeknumber']);
@@ -438,8 +437,7 @@ class RosterController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($weekid) {
             $weekid = (int) base64_decode($weekid);
@@ -488,8 +486,7 @@ class RosterController extends Controller
         $weekid = (int) base64_decode($weekid);
         $employeeid = base64_decode($employeeid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         WeekRoster::where('wrid', $weekid)
             ->where('employeeid', $employeeid)
@@ -513,8 +510,7 @@ class RosterController extends Controller
         $weekid = (int) base64_decode($weekid);
         $week = \App\Models\Week::findOrFail($weekid);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $query = WeekRoster::where('storeid', $storeid)
             ->where('weekid', $weekid)
@@ -551,8 +547,7 @@ class RosterController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = date('Y-m-d');
         $weeknumber = (int) date('W');
@@ -621,8 +616,7 @@ class RosterController extends Controller
         
         $dateofbirth = $validated['dateofbirth'];
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = new \DateTime($dateofbirth);
         $weeknumber = (int) $date->format('W');
@@ -721,8 +715,7 @@ class RosterController extends Controller
                 ->with('error', 'Invalid date format. Please use dd-mm-yyyy or yyyy-mm-dd format.');
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
 
         $weeknumber = (int) $date->format('W');
         $year = (int) $date->format('Y');
@@ -822,8 +815,7 @@ class RosterController extends Controller
             'Saturday_end' => 'required',
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Parse employeeid - can be either direct ID or "employeeid||departmentid" format
         $employeeid = $validated['employeeid'];
@@ -928,8 +920,7 @@ class RosterController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $date = date('Y-m-d');
         $weeknumber = (int) date('W');

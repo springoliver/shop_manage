@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EmployeeDocument;
 use App\Models\StoreEmployee;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 
 class DocumentController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -25,11 +27,16 @@ class DocumentController extends Controller
 
     /**
      * Check if Employee Documents module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Employee Documents')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -49,8 +56,7 @@ class DocumentController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employeeDocuments = DB::table('stoma_employee_document as d')
             ->select('d.*', 'e.firstname', 'e.lastname', 'e.username', 'e.emailid')
@@ -73,8 +79,7 @@ class DocumentController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $employees = StoreEmployee::where('storeid', $storeid)
             ->where('status', 'Active')
@@ -100,8 +105,7 @@ class DocumentController extends Controller
             'doc' => 'required|file|max:51200', // 50MB in KB
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->hasFile('doc')) {
             $file = $request->file('doc');

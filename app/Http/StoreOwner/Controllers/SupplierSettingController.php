@@ -9,6 +9,7 @@ use App\Models\PurchasePaymentMethod;
 use App\Models\PurchaseMeasure;
 use App\Models\TaxSetting;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -16,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 
 class SupplierSettingController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -25,11 +27,16 @@ class SupplierSettingController extends Controller
 
     /**
      * Check if Suppliers module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Suppliers')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -49,8 +56,7 @@ class SupplierSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $catalogProductGroups = CatalogProductGroup::where('storeid', $storeid)->get();
         $productshipments = ProductShipment::where('storeid', $storeid)->get();
@@ -79,8 +85,7 @@ class SupplierSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('catalog_product_groupid') && !empty($request->catalog_product_groupid)) {
             // Update existing
@@ -165,8 +170,7 @@ class SupplierSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('shipmentid') && !empty($request->shipmentid)) {
             // Update existing
@@ -251,8 +255,7 @@ class SupplierSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('purchasepaymentmethodid') && !empty($request->purchasepaymentmethodid)) {
             // Update existing
@@ -337,8 +340,7 @@ class SupplierSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('purchasemeasuresid') && !empty($request->purchasemeasuresid)) {
             // Update existing
@@ -423,8 +425,7 @@ class SupplierSettingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         if ($request->has('taxid') && !empty($request->taxid)) {
             // Update existing

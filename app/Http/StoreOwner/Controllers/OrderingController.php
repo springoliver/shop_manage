@@ -12,6 +12,7 @@ use App\Models\PurchaseOrderCategory;
 use App\Models\SupplierDocument;
 use App\Models\SupplierDocType;
 use App\Services\StoreOwner\ModuleService;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 
 class OrderingController extends Controller
 {
+    use HandlesEmployeeAccess;
     protected ModuleService $moduleService;
 
     public function __construct(ModuleService $moduleService)
@@ -30,11 +32,16 @@ class OrderingController extends Controller
 
     /**
      * Check if Ordering module is installed.
+     * Handles both storeowner and employee guards.
      */
     protected function checkModuleAccess()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
+        
+        if (!$storeid) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Store not found');
+        }
         
         if (!$this->moduleService->isModuleInstalled($storeid, 'Ordering')) {
             return redirect()->route('storeowner.modulesetting.index')
@@ -54,8 +61,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get suppliers where purchase_supplier = 'Yes' and status = 'Enable'
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
@@ -85,8 +91,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         $username = $user->username ?? '';
         
         // If POST request with submit, create purchase order
@@ -211,8 +216,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         $username = $user->username ?? '';
         
         // Handle Order Complete (POST)
@@ -260,8 +264,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
             ->where('status', 'Enable')
@@ -321,8 +324,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
             ->where('status', 'Enable')
@@ -370,8 +372,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
             ->where('status', 'Enable')
@@ -424,8 +425,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
             ->where('status', 'Enable')
@@ -483,8 +483,7 @@ class OrderingController extends Controller
             'deliverydocketstatus' => 'required|in:Yes,No',
         ]);
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $purchaseOrder = PurchaseOrder::where('purchase_orders_id', $validated['purchase_orders_id'])
             ->where('storeid', $storeid)
@@ -513,8 +512,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get monthly totals grouped by month/year
         $allPurchOrdersTotal = PurchaseOrder::where('storeid', $storeid)
@@ -545,8 +543,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get categories
         $purchaseOrdersCategory = PurchaseOrderCategory::where(function($query) use ($storeid) {
@@ -583,8 +580,7 @@ class OrderingController extends Controller
                 ->with('error', 'Invalid delivery date');
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get categories
         $purchaseOrdersCategory = PurchaseOrderCategory::where(function($query) use ($storeid) {
@@ -621,8 +617,7 @@ class OrderingController extends Controller
                 ->with('error', 'Invalid parameters');
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get the purchase order to edit
         $purchaseOrderEdit = PurchaseOrder::with(['supplier', 'category'])
@@ -662,8 +657,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         $username = $user->username ?? '';
         
         // Check if updating existing bill
@@ -830,8 +824,7 @@ class OrderingController extends Controller
      */
     public function getAllReportsChartYearly()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $data = PurchaseOrder::where('storeid', $storeid)
             ->select(
@@ -856,8 +849,7 @@ class OrderingController extends Controller
      */
     public function getAllReportsChartMonthly()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $data = PurchaseOrder::where('storeid', $storeid)
             ->select(
@@ -885,8 +877,7 @@ class OrderingController extends Controller
      */
     public function getAllPoChartWeekly()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $data = PurchaseOrder::where('storeid', $storeid)
             ->select(
@@ -953,8 +944,7 @@ class OrderingController extends Controller
      */
     public function getPoChartYearly()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $data = PurchaseOrder::where('storeid', $storeid)
             ->where('purchase_orders_type', 'Purchase order')
@@ -980,8 +970,7 @@ class OrderingController extends Controller
      */
     public function getPoChartMonthly()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $data = PurchaseOrder::where('storeid', $storeid)
             ->where('purchase_orders_type', 'Purchase order')
@@ -1012,8 +1001,7 @@ class OrderingController extends Controller
      */
     public function getPoChartWeekly()
     {
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $data = PurchaseOrder::where('storeid', $storeid)
             ->where('purchase_orders_type', 'Purchase order')
@@ -1047,8 +1035,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Fetch all supplier documents for client-side pagination/search/sort
         $supplierDocs = SupplierDocument::with(['supplier'])
@@ -1070,8 +1057,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         $storeSuppliers = StoreSupplier::where('storeid', $storeid)
             ->where('status', 'Enable')
@@ -1095,8 +1081,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         $username = $user->username ?? '';
         
         $validated = $request->validate([
@@ -1149,8 +1134,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         try {
             $docid = base64_decode($docid);
@@ -1205,8 +1189,7 @@ class OrderingController extends Controller
             return $moduleCheck;
         }
         
-        $user = Auth::guard('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         try {
             $purchase_orders_id = base64_decode($purchase_orders_id);
