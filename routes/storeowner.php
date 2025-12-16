@@ -27,6 +27,7 @@ use App\Http\StoreOwner\Controllers\ProductController as StoreOwnerProductContro
 use App\Http\StoreOwner\Controllers\OrderingSettingController as StoreOwnerOrderingSettingController;
 use App\Http\StoreOwner\Controllers\OrderingController as StoreOwnerOrderingController;
 use App\Http\StoreOwner\Controllers\AjaxController as StoreOwnerAjaxController;
+use App\Http\StoreOwner\Controllers\DailyReportController as StoreOwnerDailyReportController;
 use Illuminate\Support\Facades\Route;
 
 // StoreOwner Routes (Default End Users)
@@ -181,6 +182,11 @@ Route::name('storeowner.')->group(function () {
         Route::get('clocktime/employee_holidays', [StoreOwnerClockTimeController::class, 'employeeHolidays'])->name('clocktime.employee_holidays');
         Route::get('clocktime/compare_weekly_hrs', [StoreOwnerClockTimeController::class, 'compareWeeklyHrs'])->name('clocktime.compare_weekly_hrs');
         Route::get('clocktime/allemployee_weeklyhrs', [StoreOwnerClockTimeController::class, 'allemployeeWeeklyhrs'])->name('clocktime.allemployee_weeklyhrs');
+        Route::get('clocktime/reports-chart-weekly', [StoreOwnerClockTimeController::class, 'reportsChartWeekly'])->name('clocktime.reports-chart-weekly');
+        Route::get('clocktime/reports-chart-monthly', [StoreOwnerClockTimeController::class, 'reportsChartMonthly'])->name('clocktime.reports-chart-monthly');
+        Route::post('clocktime/get_hours_chart_monthly', [StoreOwnerClockTimeController::class, 'getHoursChartMonthly'])->name('clocktime.get_hours_chart_monthly');
+        Route::get('clocktime/edit-employee-hours/{payrollId}', [StoreOwnerClockTimeController::class, 'editEmployeeHours'])->name('clocktime.edit-employee-hours');
+        Route::post('clocktime/update-employee-hours', [StoreOwnerClockTimeController::class, 'updateEmployeeHours'])->name('clocktime.update-employee-hours');
         Route::get('clocktime/monthly_hrs_allemployee', [StoreOwnerClockTimeController::class, 'monthlyHrsAllEmployee'])->name('clocktime.monthly_hrs_allemployee');
         Route::get('clocktime/week-clock-time/{employeeid}/{date}', [StoreOwnerClockTimeController::class, 'weekClockTime'])->name('clocktime.week-clock-time');
         Route::get('clocktime/week-clock-time-allemp/{weekid}/{date}', [StoreOwnerClockTimeController::class, 'weekClockTimeAllEmp'])->name('clocktime.week-clock-time-allemp');
@@ -201,11 +207,15 @@ Route::name('storeowner.')->group(function () {
         Route::get('clocktime/weekly-hrs-byweek/{weekno}/{year}', [StoreOwnerClockTimeController::class, 'weeklyHrsByWeek'])->name('clocktime.weekly-hrs-byweek');
         Route::get('clocktime/export-all-employee-hols', [StoreOwnerClockTimeController::class, 'exportAllEmployeeHols'])->name('clocktime.export-all-employee-hols');
         Route::get('clocktime/export-group-all-employee-hols/{year}', [StoreOwnerClockTimeController::class, 'exportGroupAllEmployeeHols'])->name('clocktime.export-group-all-employee-hols');
+        
+        // Chart Data AJAX routes for dashboard
+        Route::post('clocktime/get_hours_chart_weekly', [StoreOwnerClockTimeController::class, 'getHoursChartWeekly'])->name('clocktime.get_hours_chart_weekly');
 
         // Document routes
         Route::get('document', [StoreOwnerDocumentController::class, 'index'])->name('document.index');
         Route::get('document/add', [StoreOwnerDocumentController::class, 'create'])->name('document.create');
         Route::post('document', [StoreOwnerDocumentController::class, 'store'])->name('document.store');
+        Route::post('document/update', [StoreOwnerDocumentController::class, 'update'])->name('document.update');
         Route::post('document/get-documents', [StoreOwnerDocumentController::class, 'getDocuments'])->name('document.get-documents');
         Route::delete('document/{docid}', [StoreOwnerDocumentController::class, 'destroy'])->name('document.destroy');
 
@@ -222,6 +232,7 @@ Route::name('storeowner.')->group(function () {
         Route::get('employeepayroll/employee-settings', [StoreOwnerEmployeePayrollController::class, 'employeeSettings'])->name('employeepayroll.employee-settings');
         Route::get('employeepayroll/edit-employee-settings/{employee_settings_id}', [StoreOwnerEmployeePayrollController::class, 'editEmployeeSettings'])->name('employeepayroll.edit-employee-settings');
         Route::post('employeepayroll/update-employee-settings', [StoreOwnerEmployeePayrollController::class, 'updateEmployeeSettings'])->name('employeepayroll.update-employee-settings');
+        Route::delete('employeepayroll/delete-payroll-hour/{payrollId}', [StoreOwnerEmployeePayrollController::class, 'deletePayrollHour'])->name('employeepayroll.delete-payroll-hour');
 
         // Employee Reviews routes
         Route::get('employeereviews', [StoreOwnerEmployeeReviewsController::class, 'index'])->name('employeereviews.index');
@@ -380,6 +391,9 @@ Route::name('storeowner.')->group(function () {
         Route::post('ordering/get_po_chart_yearly', [StoreOwnerOrderingController::class, 'getPoChartYearly'])->name('ordering.get_po_chart_yearly');
         Route::post('ordering/get_po_chart_monthly', [StoreOwnerOrderingController::class, 'getPoChartMonthly'])->name('ordering.get_po_chart_monthly');
         Route::post('ordering/get_po_chart_weekly', [StoreOwnerOrderingController::class, 'getPoChartWeekly'])->name('ordering.get_po_chart_weekly');
+        
+        // Daily Report Chart Data AJAX routes for dashboard
+        Route::post('dailyreport/get_sales_chart_weekly', [StoreOwnerDailyReportController::class, 'getSalesChartWeekly'])->name('dailyreport.get_sales_chart_weekly');
         
         // Supplier Documents routes
         Route::get('ordering/index_supplier_doc', [StoreOwnerOrderingController::class, 'indexSupplierDoc'])->name('ordering.index_supplier_doc');

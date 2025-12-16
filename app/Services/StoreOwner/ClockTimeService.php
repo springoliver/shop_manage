@@ -645,5 +645,23 @@ class ClockTimeService
             ->orderBy('ep.payroll_id', 'ASC')
             ->get();
     }
+
+    /**
+     * Get a single payroll hour record by payroll_id.
+     */
+    public function getPayrollHourById(int $storeid, int $payrollId)
+    {
+        return DB::table('stoma_emp_payroll_hrs as ep')
+            ->select([
+                'ep.*',
+                'e.firstname',
+                'e.lastname',
+                'e.sallary_method',
+            ])
+            ->leftJoin('stoma_employee as e', 'ep.employeeid', '=', 'e.employeeid')
+            ->where('ep.storeid', $storeid)
+            ->where('ep.payroll_id', $payrollId)
+            ->first();
+    }
 }
 

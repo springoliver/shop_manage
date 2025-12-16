@@ -93,7 +93,14 @@
                 Website URL<span class="text-red-500"> *</span>
             </label>
             <div class="w-3/4">
-                <x-text-input id="weburl" class="block w-full" type="text" name="weburl" :value="old('weburl', $store->website_url)" required />
+                @php
+                    // Display URL without http:// or https:// prefix for editing
+                    $displayUrl = old('weburl', $store->website_url ?? '');
+                    if ($displayUrl && (strpos($displayUrl, 'http://') === 0 || strpos($displayUrl, 'https://') === 0)) {
+                        $displayUrl = preg_replace('/^https?:\/\//', '', $displayUrl);
+                    }
+                @endphp
+                <x-text-input id="weburl" class="block w-full" type="text" name="weburl" :value="$displayUrl" placeholder="e.g., www.example.com or https://www.example.com" required />
                 <x-input-error :messages="$errors->get('weburl')" class="mt-2" />
             </div>
         </div>

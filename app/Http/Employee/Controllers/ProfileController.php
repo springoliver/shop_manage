@@ -61,7 +61,7 @@ class ProfileController extends Controller
             'emailid' => 'required|email|max:255',
             'phone' => 'required|string|max:51',
             'address' => 'required|string|max:255',
-            'dateofbirth' => 'required|string', // Will parse dd-mm-yyyy format
+            'dateofbirth' => 'required|date', // HTML5 date input sends yyyy-mm-dd format
             'upimg' => 'required|in:Yes,No',
             'logo_img' => 'nullable|required_if:upimg,Yes|image|mimes:jpeg,png,jpg,gif|max:2048',
             // Address fields from Google Places
@@ -72,13 +72,19 @@ class ProfileController extends Controller
             'address_zipcode' => 'nullable|string|max:21',
         ]);
         
-        // Parse date from dd-mm-yyyy format (matching CI)
+        // Parse date - HTML5 date input sends yyyy-mm-dd format, but also handle dd-mm-yyyy for backward compatibility
         try {
-            $dateOfBirth = Carbon::createFromFormat('d-m-Y', $validated['dateofbirth'])->format('Y-m-d');
+            // Try yyyy-mm-dd format first (HTML5 date input)
+            $dateOfBirth = Carbon::createFromFormat('Y-m-d', $validated['dateofbirth'])->format('Y-m-d');
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['dateofbirth' => 'Invalid date format. Please use dd-mm-yyyy format.']);
+            try {
+                // Fallback to dd-mm-yyyy format (for backward compatibility)
+                $dateOfBirth = Carbon::createFromFormat('d-m-Y', $validated['dateofbirth'])->format('Y-m-d');
+            } catch (\Exception $e2) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['dateofbirth' => 'Invalid date format.']);
+            }
         }
         
         // Check email uniqueness (excluding current employee)

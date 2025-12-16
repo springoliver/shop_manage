@@ -36,76 +36,99 @@
 
     <div class="py-4">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <!-- Search and Add -->
-            <div class="bg-white rounded-lg shadow p-6 mb-6">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center">
-                        <label class="block text-sm font-medium text-gray-700 mr-4">Search Document:</label>
-                        <input type="text" id="searchbox" placeholder="Enter Keyword" 
-                               class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
-                    </div>
-                    <div>
-                        <a href="{{ route('storeowner.document.create') }}" 
-                           class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
-                            <i class="fas fa-plus mr-2"></i> Add
-                        </a>
-                    </div>
+            <!-- Header with Add Button -->
+            <div class="flex justify-between items-center mb-2">
+                <h1 class="text-2xl font-semibold text-gray-800"></h1>
+                <a href="{{ route('storeowner.document.create') }}" 
+                   class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
+                    <i class="fas fa-plus mr-2"></i>
+                    Add
+                </a>
+            </div>
+
+            <!-- Search and Per Page Controls -->
+            <div class="mb-4 flex justify-between items-center flex-wrap gap-4">
+                <div class="flex items-center gap-2">
+                    <input type="text" 
+                           id="searchbox"
+                           placeholder="Search documents..." 
+                           class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm">
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-700">Show:</label>
+                    <select id="perPageSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 min-w-[68px] text-sm">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="text-sm text-gray-700">entries</span>
                 </div>
             </div>
 
             <!-- Table -->
             <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200" id="table-new">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
-                                    Employee Name
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
-                                    Document
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
-                                    Action
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @if($employeeDocuments->count() > 0)
-                                @foreach($employeeDocuments as $doc)
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ ucfirst($doc->firstname ?? '') }} {{ ucfirst($doc->lastname ?? '') }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $doc->docname }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <a href="#" onclick="getDocuments({{ $doc->employeeid }})" 
-                                               data-target="#myModalImage" 
-                                               data-toggle="modal" 
-                                               class="text-blue-600 hover:text-blue-800 cursor-pointer">
-                                                View All Documents
-                                            </a>
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200" id="table-new">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="employee" style="cursor: pointer;">
+                                        Employee Name <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="document" style="cursor: pointer;">
+                                        Document <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="documentTableBody">
+                                @if($employeeDocuments->count() > 0)
+                                    @foreach($employeeDocuments as $doc)
+                                        <tr class="document-row hover:bg-gray-50" 
+                                            data-row-index="{{ $loop->index }}"
+                                            data-employee="{{ strtolower(ucfirst($doc->firstname ?? '') . ' ' . ucfirst($doc->lastname ?? '')) }}"
+                                            data-document="{{ strtolower($doc->docname ?? '') }}">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ ucfirst($doc->firstname ?? '') }} {{ ucfirst($doc->lastname ?? '') }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ $doc->docname }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <a href="#" onclick="getDocuments({{ $doc->employeeid }})" 
+                                                   data-target="#myModalImage" 
+                                                   data-toggle="modal" 
+                                                   class="text-blue-600 hover:text-blue-800 cursor-pointer">
+                                                    View All Documents
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @else
+                                    <tr id="noDocumentsRow">
+                                        <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">
+                                            No records found.
                                         </td>
                                     </tr>
-                                @endforeach
-                            @else
-                                <tr>
-                                    <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">
-                                        No records found.
-                                    </td>
-                                </tr>
-                            @endif
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination -->
-                @if($employeeDocuments->hasPages())
-                    <div class="px-6 py-4 border-t border-gray-200">
-                        {{ $employeeDocuments->links() }}
+                                @endif
+                            </tbody>
+                        </table>
                     </div>
-                @endif
+                    
+                    <!-- Client-side Pagination -->
+                    <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Showing <span id="showingStart">1</span> to <span id="showingEnd">10</span> of <span id="totalEntries">{{ $employeeDocuments->count() }}</span> entries
+                        </div>
+                        <div id="paginationControls" class="flex items-center gap-2">
+                            <!-- Pagination buttons will be generated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -121,21 +144,260 @@
 
     @push('scripts')
     <script>
-        // Search functionality
-        document.getElementById('searchbox')?.addEventListener('keyup', function() {
-            const searchTerm = this.value.toLowerCase();
-            const table = document.getElementById('table-new');
-            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        // Client-side pagination, search, and sorting
+        let currentPage = 1;
+        let perPage = 10;
+        let allRows = [];
+        let filteredRows = [];
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        function initializePagination() {
+            const tbody = document.getElementById('documentTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.document-row'));
+            filteredRows = [...allRows];
             
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
+            const noDocumentsRow = document.getElementById('noDocumentsRow');
+            if (noDocumentsRow && allRows.length > 0) {
+                noDocumentsRow.style.display = 'none';
+            }
+            
+            perPage = parseInt(document.getElementById('perPageSelect').value);
+            currentPage = 1;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const tbody = document.getElementById('documentTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.document-row'));
+            
+            const searchTerm = document.getElementById('searchbox')?.value.toLowerCase() || '';
+            
+            if (searchTerm) {
+                filteredRows = allRows.filter(row => {
+                    const text = row.textContent.toLowerCase();
+                    return text.includes(searchTerm);
+                });
+            } else {
+                filteredRows = [...allRows];
+            }
+
+            if (sortColumn) {
+                filteredRows.sort((a, b) => {
+                    const aValue = a.getAttribute(`data-${sortColumn}`) || '';
+                    const bValue = b.getAttribute(`data-${sortColumn}`) || '';
+                    
+                    // String comparison for all columns
+                    if (aValue < bValue) {
+                        return sortDirection === 'asc' ? -1 : 1;
+                    }
+                    if (aValue > bValue) {
+                        return sortDirection === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            const totalPages = Math.ceil(filteredRows.length / perPage);
+            const start = (currentPage - 1) * perPage;
+            const end = Math.min(start + perPage, filteredRows.length);
+
+            if (sortColumn && filteredRows.length > 0) {
+                const noDocumentsRow = document.getElementById('noDocumentsRow');
+                
+                allRows.forEach(row => {
+                    if (row.id !== 'noDocumentsRow') {
+                        row.remove();
+                    }
+                });
+                
+                filteredRows.forEach(row => {
+                    if (row.id !== 'noDocumentsRow') {
+                        if (noDocumentsRow && noDocumentsRow.parentNode) {
+                            tbody.insertBefore(row, noDocumentsRow);
+                        } else {
+                            tbody.appendChild(row);
+                        }
+                    }
+                });
+                
+                allRows = Array.from(tbody.querySelectorAll('tr.document-row'));
+                const sortedFilteredIndices = filteredRows.map(row => row.getAttribute('data-row-index'));
+                const newFilteredRows = [];
+                allRows.forEach(row => {
+                    const rowIndex = row.getAttribute('data-row-index');
+                    if (sortedFilteredIndices.includes(rowIndex)) {
+                        newFilteredRows.push(row);
+                    }
+                });
+                filteredRows = newFilteredRows;
+            }
+
+            allRows.forEach(row => {
+                if (row.id !== 'noDocumentsRow') {
                     row.style.display = 'none';
                 }
+            });
+
+            const noDocumentsRow = document.getElementById('noDocumentsRow');
+            if (noDocumentsRow) {
+                if (filteredRows.length === 0) {
+                    noDocumentsRow.style.display = '';
+                } else {
+                    noDocumentsRow.style.display = 'none';
+                }
             }
+
+            for (let i = start; i < end; i++) {
+                if (filteredRows[i] && filteredRows[i].id !== 'noDocumentsRow') {
+                    filteredRows[i].style.display = '';
+                }
+            }
+
+            document.getElementById('showingStart').textContent = filteredRows.length === 0 ? 0 : start + 1;
+            document.getElementById('showingEnd').textContent = end;
+            document.getElementById('totalEntries').textContent = filteredRows.length;
+
+            generatePaginationControls(totalPages);
+        }
+
+        function generatePaginationControls(totalPages) {
+            const paginationDiv = document.getElementById('paginationControls');
+            paginationDiv.innerHTML = '';
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Previous';
+            prevBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === 1 ? ' opacity-50 cursor-not-allowed' : '');
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(prevBtn);
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                firstBtn.onclick = () => {
+                    currentPage = 1;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(firstBtn);
+
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md ' + 
+                    (i === currentPage ? 'bg-gray-800 text-white' : 'hover:bg-gray-100');
+                pageBtn.onclick = () => {
+                    currentPage = i;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                lastBtn.onclick = () => {
+                    currentPage = totalPages;
+                    updateDisplay();
+                };
+                paginationDiv.appendChild(lastBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next';
+            nextBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === totalPages ? ' opacity-50 cursor-not-allowed' : '');
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateDisplay();
+                }
+            };
+            paginationDiv.appendChild(nextBtn);
+        }
+
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            document.querySelectorAll('.sortable .sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '<i class="fas fa-sort text-gray-400"></i>';
+            });
+
+            const clickedHeader = document.querySelector(`th[data-sort="${column}"]`);
+            if (clickedHeader) {
+                const indicator = clickedHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = sortDirection === 'asc' 
+                        ? '<i class="fas fa-sort-up text-gray-800"></i>' 
+                        : '<i class="fas fa-sort-down text-gray-800"></i>';
+                }
+            }
+
+            currentPage = 1;
+            updateDisplay();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePagination();
+
+            document.getElementById('searchbox')?.addEventListener('keyup', function() {
+                currentPage = 1;
+                updateDisplay();
+            });
+
+            document.getElementById('perPageSelect')?.addEventListener('change', function() {
+                perPage = parseInt(this.value);
+                currentPage = 1;
+                updateDisplay();
+            });
+
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.getAttribute('data-sort');
+                    if (column) {
+                        sortTable(column);
+                    }
+                });
+            });
         });
 
         function getDocuments(employeeid) {
@@ -150,8 +412,105 @@
                 success: function(data) {
                     document.getElementById('myModalImage').classList.remove('hidden');
                     $('#imgid').html(data);
+                    // Re-attach event listeners after modal content is loaded
+                    attachModalEventListeners();
                 }
             });
+        }
+        
+        function closeDocumentModal() {
+            document.getElementById('myModalImage').classList.add('hidden');
+        }
+        
+        function deleteDocument(docid, deleteUrl) {
+            if (!confirm('Are you sure you want to delete this document?')) {
+                return false;
+            }
+            
+            const employeeid = document.getElementById('modalEmployeeId')?.value;
+            if (!employeeid) {
+                alert('Error: Employee ID not found.');
+                return false;
+            }
+            
+            // If deleteUrl is not provided, construct it
+            if (!deleteUrl) {
+                deleteUrl = '{{ url("/storeowner/document") }}/' + docid;
+            }
+            
+            const formData = new FormData();
+            formData.append('_token', '{{ csrf_token() }}');
+            formData.append('_method', 'DELETE');
+            
+            fetch(deleteUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('Server error: ' + response.status + ' - ' + text);
+                    });
+                }
+                return response.text();
+            })
+            .then(html => {
+                // Update modal content
+                document.getElementById('imgid').innerHTML = html;
+                // Re-attach event listeners
+                attachModalEventListeners();
+            })
+            .catch(error => {
+                console.error('Error deleting document:', error);
+                alert('Error deleting document: ' + error.message);
+            });
+            
+            return false;
+        }
+        
+        function attachModalEventListeners() {
+            // Handle form submission via AJAX
+            const form = document.getElementById('modalForm');
+            if (form) {
+                // Remove existing listener if any
+                const newForm = form.cloneNode(true);
+                form.parentNode.replaceChild(newForm, form);
+                
+                newForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(newForm);
+                    
+                    fetch('{{ route("storeowner.document.update") }}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        // Update modal content
+                        document.getElementById('imgid').innerHTML = html;
+                        // Re-attach event listeners
+                        attachModalEventListeners();
+                    })
+                    .catch(error => {
+                        console.error('Error uploading document:', error);
+                        alert('Error uploading document. Please try again.');
+                    });
+                });
+            }
         }
         
         // Close modal when clicking outside

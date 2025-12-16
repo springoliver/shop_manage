@@ -5,19 +5,24 @@ namespace App\Services\Employee;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Services\StoreOwner\ModuleService;
+use App\Services\StoreOwner\PermissionService;
 
 class MenuService
 {
     protected ModuleService $moduleService;
+    protected PermissionService $permissionService;
     protected int $storeid;
     protected int $employeeid;
+    protected int $usergroupid;
     
-    public function __construct(ModuleService $moduleService)
+    public function __construct(ModuleService $moduleService, PermissionService $permissionService)
     {
         $this->moduleService = $moduleService;
+        $this->permissionService = $permissionService;
         $employee = Auth::guard('employee')->user();
         $this->storeid = $employee ? $employee->storeid : 0;
         $this->employeeid = $employee ? $employee->employeeid : 0;
+        $this->usergroupid = $employee ? $employee->usergroupid : 0;
     }
     
     /**
@@ -63,8 +68,6 @@ class MenuService
             ],
         ];
         
-        // Personal menu items - always show if module is installed (regardless of access level)
-        // These are employee's own data, different from admin/management features
         // My Roster - shown if Roster module is installed (always visible, no level check)
         if (isset($allInstalledModulesMap['Roster'])) {
             $menu[] = [
@@ -72,6 +75,30 @@ class MenuService
                 'route' => 'employee.roster.index',
                 'enabled' => Route::has('employee.roster.index'),
                 'icon' => '<i class="fa fa-th"></i>',
+                'type' => 'link',
+            ];
+        }
+
+         
+        // Time of request - shown if Time Off Request module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Time Off Request'])) {
+            $menu[] = [
+                'label' => 'Time of request',
+                'route' => 'employee.holidayrequest.index',
+                'enabled' => Route::has('employee.holidayrequest.index'),
+                'icon' => '<i class="fa fa-plane"></i>',
+                'type' => 'link',
+            ];
+        }
+
+         
+        // Resignation - shown if Resignation module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Resignation'])) {
+            $menu[] = [
+                'label' => 'Resignation',
+                'route' => 'employee.resignation.index',
+                'enabled' => Route::has('employee.resignation.index'),
+                'icon' => '<i class="fa fa-sign-out"></i>',
                 'type' => 'link',
             ];
         }
@@ -98,40 +125,20 @@ class MenuService
             ];
         }
         
-        // Time of request - shown if Time Off Request module is installed (always visible, no level check)
-        if (isset($allInstalledModulesMap['Time Off Request'])) {
-            $menu[] = [
-                'label' => 'Time of request',
-                'route' => 'employee.holidayrequest.index',
-                'enabled' => Route::has('employee.holidayrequest.index'),
-                'icon' => '<i class="fa fa-plane"></i>',
-                'type' => 'link',
-            ];
-        }
-        
-        // Resignation - shown if Resignation module is installed (always visible, no level check)
-        if (isset($allInstalledModulesMap['Resignation'])) {
-            $menu[] = [
-                'label' => 'Resignation',
-                'route' => 'employee.resignation.index',
-                'enabled' => Route::has('employee.resignation.index'),
-                'icon' => '<i class="fa fa-sign-out"></i>',
-                'type' => 'link',
-            ];
-        }
-        
-        // Store Documents submenu - check level (menus with submenus should respect access level)
+        // Store Documents submenu - check module access AND URL permission
         if (isset($moduleAccessMap['Store Documents']) && $moduleAccessMap['Store Documents'] != 'None') {
             $storeDocsSubmenu = [];
             
             if (Route::has('storeowner.storedocument.index')) {
-                $storeDocsSubmenu[] = [
-                    'label' => 'Documents',
-                    'route' => 'storeowner.storedocument.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file-text"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('storedocument')) {
+                    $storeDocsSubmenu[] = [
+                        'label' => 'Documents',
+                        'route' => 'storeowner.storedocument.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file-text"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
             
             if (!empty($storeDocsSubmenu)) {
@@ -144,122 +151,137 @@ class MenuService
             }
         }
         
-        // POS (Point Of Sale) - check if it has submenu in store owner
-        // If it has submenu, check level. If it's a direct link, always show.
-        // Based on store owner sidebar, POS has submenu, so check level
+        // Based on store owner sidebar, POS has submenu, so check module access AND URL permission
         if (isset($moduleAccessMap['Point Of Sale']) && $moduleAccessMap['Point Of Sale'] != 'None') {
-            // For now, POS is a direct link in employee sidebar (matches CI)
-            $menu[] = [
-                'label' => 'POS (Point Of Sale)',
-                'route' => 'employee.pos.index',
-                'enabled' => Route::has('employee.pos.index'),
-                'icon' => '<i class="fa fa-bank"></i>',
-                'type' => 'link',
-            ];
+            if ($this->hasUrlPermission('pos')) {
+                $menu[] = [
+                    'label' => 'POS (Point Of Sale)',
+                    'route' => 'employee.pos.index',
+                    'enabled' => Route::has('employee.pos.index'),
+                    'icon' => '<i class="fa fa-bank"></i>',
+                    'type' => 'link',
+                ];
+            }
         }
         
-        // Employee Management submenu - only show items with level != 'None'
+        // Employee Management submenu - check both module access AND URL permissions
         $employeeMgmtSubmenu = [];
         
-        // Employees - always shown if route exists
+        // Employees - check URL permission for 'employee' route
         if (Route::has('storeowner.employee.index')) {
-            $employeeMgmtSubmenu[] = [
-                'label' => 'Employee',
-                'route' => 'storeowner.employee.index',
-                'enabled' => true,
-                'icon' => '<i class="fa fa-user"></i>',
-                'type' => 'link',
-            ];
+            if ($this->hasUrlPermission('employee')) {
+                $employeeMgmtSubmenu[] = [
+                    'label' => 'Employee',
+                    'route' => 'storeowner.employee.index',
+                    'enabled' => true,
+                    'icon' => '<i class="fa fa-user"></i>',
+                    'type' => 'link',
+                ];
+            }
         }
         
-        // Employee Payroll - check level
+        // Employee Payroll - check module access AND URL permission
         if (isset($moduleAccessMap['Employee Payroll']) && $moduleAccessMap['Employee Payroll'] != 'None') {
             if (Route::has('storeowner.employeepayroll.index')) {
-                $employeeMgmtSubmenu[] = [
-                    'label' => 'Employee Payroll',
-                    'route' => 'storeowner.employeepayroll.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-users"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('employeepayroll')) {
+                    $employeeMgmtSubmenu[] = [
+                        'label' => 'Employee Payroll',
+                        'route' => 'storeowner.employeepayroll.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-users"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
-        // Roster - check level
+        // Roster - check module access AND URL permission
         if (isset($moduleAccessMap['Roster']) && $moduleAccessMap['Roster'] != 'None') {
             if (Route::has('storeowner.roster.index')) {
-                $employeeMgmtSubmenu[] = [
-                    'label' => 'Roster',
-                    'route' => 'storeowner.roster.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-users"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('roster')) {
+                    $employeeMgmtSubmenu[] = [
+                        'label' => 'Employee Roster',
+                        'route' => 'storeowner.roster.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-users"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
-        // Clock in-out - check level
+        // Clock in-out - check module access AND URL permission
         if (isset($moduleAccessMap['Clock in-out']) && $moduleAccessMap['Clock in-out'] != 'None') {
             if (Route::has('storeowner.clocktime.index')) {
-                $employeeMgmtSubmenu[] = [
-                    'label' => 'Clock in-out',
-                    'route' => 'storeowner.clocktime.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-clock"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('clocktime')) {
+                    $employeeMgmtSubmenu[] = [
+                        'label' => 'Clock in-out',
+                        'route' => 'storeowner.clocktime.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-clock"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
-        // Time Off Request - check level
+        // Time Off Request - check module access AND URL permission
         if (isset($moduleAccessMap['Time Off Request']) && $moduleAccessMap['Time Off Request'] != 'None') {
             if (Route::has('storeowner.holidayrequest.index')) {
-                $employeeMgmtSubmenu[] = [
-                    'label' => 'Time Off Request',
-                    'route' => 'storeowner.holidayrequest.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-calendar"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('holidayrequest')) {
+                    $employeeMgmtSubmenu[] = [
+                        'label' => 'Time Off Request',
+                        'route' => 'storeowner.holidayrequest.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-calendar"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
-        // Employee Documents - check level
+        // Employee Documents - check module access AND URL permission
         if (isset($moduleAccessMap['Employee Documents']) && $moduleAccessMap['Employee Documents'] != 'None') {
             if (Route::has('storeowner.document.index')) {
-                $employeeMgmtSubmenu[] = [
-                    'label' => 'Employee Documents',
-                    'route' => 'storeowner.document.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('document')) {
+                    $employeeMgmtSubmenu[] = [
+                        'label' => 'Employee Documents',
+                        'route' => 'storeowner.document.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
-        // Resignation - check level
+        // Resignation - check module access AND URL permission
         if (isset($moduleAccessMap['Resignation']) && $moduleAccessMap['Resignation'] != 'None') {
             if (Route::has('storeowner.resignation.index')) {
-                $employeeMgmtSubmenu[] = [
-                    'label' => 'Resignation',
-                    'route' => 'storeowner.resignation.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file-text"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('resignation')) {
+                    $employeeMgmtSubmenu[] = [
+                        'label' => 'Resignation',
+                        'route' => 'storeowner.resignation.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file-text"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
-        // Employee Reviews - check level
+        // Employee Reviews - check module access AND URL permission
         if (isset($moduleAccessMap['Employee Reviews']) && $moduleAccessMap['Employee Reviews'] != 'None') {
             if (Route::has('storeowner.employeereviews.index')) {
-                $employeeMgmtSubmenu[] = [
-                    'label' => 'Employee Reviews',
-                    'route' => 'storeowner.employeereviews.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file-text"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('employeereviews')) {
+                    $employeeMgmtSubmenu[] = [
+                        'label' => 'Employee Reviews',
+                        'route' => 'storeowner.employeereviews.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file-text"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
@@ -273,18 +295,20 @@ class MenuService
             ];
         }
         
-        // Daily Management submenu - shown if Daily Report module is installed AND level != 'None'
+        // Daily Management submenu - check module access AND URL permission
         if (isset($moduleAccessMap['Daily Report']) && $moduleAccessMap['Daily Report'] != 'None') {
             $dailyMgmtSubmenu = [];
             
             if (Route::has('storeowner.dailyreport.index')) {
-                $dailyMgmtSubmenu[] = [
-                    'label' => 'Daily Report',
-                    'route' => 'storeowner.dailyreport.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file-text"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('dailyreport')) {
+                    $dailyMgmtSubmenu[] = [
+                        'label' => 'Daily Report',
+                        'route' => 'storeowner.dailyreport.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file-text"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
             
             if (!empty($dailyMgmtSubmenu)) {
@@ -297,33 +321,37 @@ class MenuService
             }
         }
         
-        // Suppliers submenu - shown if Suppliers OR Products module is installed (check level)
+        // Suppliers submenu - check module access AND URL permission
         $suppliersSubmenu = [];
         $showSuppliersMenu = false;
         
         if (isset($moduleAccessMap['Suppliers']) && $moduleAccessMap['Suppliers'] != 'None') {
-            $showSuppliersMenu = true;
             if (Route::has('storeowner.suppliers.index')) {
-                $suppliersSubmenu[] = [
-                    'label' => 'Suppliers',
-                    'route' => 'storeowner.suppliers.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file-text"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('suppliers')) {
+                    $showSuppliersMenu = true;
+                    $suppliersSubmenu[] = [
+                        'label' => 'Suppliers',
+                        'route' => 'storeowner.suppliers.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file-text"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
         if (isset($moduleAccessMap['Products']) && $moduleAccessMap['Products'] != 'None') {
-            $showSuppliersMenu = true;
             if (Route::has('storeowner.products.index')) {
-                $suppliersSubmenu[] = [
-                    'label' => 'Products',
-                    'route' => 'storeowner.products.index',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file-text"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('products')) {
+                    $showSuppliersMenu = true;
+                    $suppliersSubmenu[] = [
+                        'label' => 'Products',
+                        'route' => 'storeowner.products.index',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file-text"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
         }
         
@@ -336,38 +364,44 @@ class MenuService
             ];
         }
         
-        // Purchase Order submenu - shown if Ordering module is installed AND level != 'None'
+        // Purchase Order submenu - check module access AND URL permission
         if (isset($moduleAccessMap['Ordering']) && $moduleAccessMap['Ordering'] != 'None') {
             $poSubmenu = [];
             
             if (Route::has('storeowner.ordering.order')) {
-                $poSubmenu[] = [
-                    'label' => 'New Purchase Order',
-                    'route' => 'storeowner.ordering.order',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-file-text"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('ordering/order')) {
+                    $poSubmenu[] = [
+                        'label' => 'New Purchase Order',
+                        'route' => 'storeowner.ordering.order',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-file-text"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
             
             if (Route::has('storeowner.ordering.report')) {
-                $poSubmenu[] = [
-                    'label' => 'PO Reports',
-                    'route' => 'storeowner.ordering.report',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-bar-chart"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('ordering/report')) {
+                    $poSubmenu[] = [
+                        'label' => 'PO Reports',
+                        'route' => 'storeowner.ordering.report',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-bar-chart"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
             
             if (Route::has('storeowner.ordering.product-report')) {
-                $poSubmenu[] = [
-                    'label' => 'Ordered Product Reports',
-                    'route' => 'storeowner.ordering.product-report',
-                    'enabled' => true,
-                    'icon' => '<i class="fa fa-bar-chart"></i>',
-                    'type' => 'link',
-                ];
+                if ($this->hasUrlPermission('ordering/product-report')) {
+                    $poSubmenu[] = [
+                        'label' => 'Ordered Product Reports',
+                        'route' => 'storeowner.ordering.product-report',
+                        'enabled' => true,
+                        'icon' => '<i class="fa fa-bar-chart"></i>',
+                        'type' => 'link',
+                    ];
+                }
             }
             
             if (!empty($poSubmenu)) {
@@ -390,5 +424,20 @@ class MenuService
         ];
         
         return array_filter($menu);
+    }
+    
+    /**
+     * Check if employee has URL permission for a given route.
+     * 
+     * @param string $url The CI-like URL (e.g., 'employee', 'roster', 'holidayrequest')
+     * @return bool
+     */
+    protected function hasUrlPermission(string $url): bool
+    {
+        if (!$this->storeid || !$this->usergroupid) {
+            return false;
+        }
+        
+        return $this->permissionService->hasUrlPermission($this->storeid, $this->usergroupid, $url);
     }
 }

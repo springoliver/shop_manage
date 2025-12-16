@@ -160,26 +160,111 @@ class DocumentController extends Controller
     }
 
     /**
-     * Remove a document.
+     * Update document (upload new document from modal).
      */
-    public function destroy($docid): RedirectResponse
+    public function update(Request $request)
     {
         $moduleCheck = $this->checkModuleAccess();
         if ($moduleCheck) {
             return $moduleCheck;
         }
         
-        $document = EmployeeDocument::findOrFail($docid);
+        $validated = $request->validate([
+            'employeeid' => 'required|integer|exists:stoma_employee,employeeid',
+            'docname' => 'required|string|max:255',
+            'doc' => 'required|file|max:51200', // 50MB in KB
+        ]);
         
-        // Delete file from storage
-        if ($document->docpath && Storage::disk('public')->exists('documents/' . $document->docpath)) {
-            Storage::disk('public')->delete('documents/' . $document->docpath);
+        $storeid = $this->getStoreId();
+        
+        if ($request->hasFile('doc')) {
+            $file = $request->file('doc');
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+            $fileName = $originalName . '_' . uniqid() . '.' . $extension;
+            
+            // Store file in storage/app/public/documents
+            $filePath = $file->storeAs('documents', $fileName, 'public');
+            
+            $document = new EmployeeDocument();
+            $document->storeid = $storeid;
+            $document->employeeid = $validated['employeeid'];
+            $document->docname = $validated['docname'];
+            $document->docpath = $fileName;
+            $document->insertdatetime = now();
+            $document->insertip = $request->ip();
+            $document->status = 'Enable';
+            $document->save();
+            
+            // If AJAX request, return updated modal content
+            if ($request->ajax()) {
+                $employeeDocuments = EmployeeDocument::where('employeeid', $validated['employeeid'])
+                    ->orderBy('docid', 'DESC')
+                    ->get();
+                
+                return view('storeowner.document.modal', [
+                    'id' => $validated['employeeid'],
+                    'employee_document' => $employeeDocuments,
+                ]);
+            }
+            
+            return redirect()->route('storeowner.document.index')
+                ->with('success', 'Document Added Successfully.');
         }
         
-        $document->delete();
+        if ($request->ajax()) {
+            return response()->json(['error' => 'Something went wrong. Please try again.'], 400);
+        }
         
-        return redirect()->route('storeowner.document.index')
-            ->with('success', 'Record has been deleted successfully');
+        return redirect()->back()
+            ->with('error', 'Something went wrong. Please try again.')
+            ->withInput();
+    }
+
+    /**
+     * Remove a document.
+     */
+    public function destroy(Request $request, $docid)
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        try {
+            $document = EmployeeDocument::findOrFail($docid);
+            $employeeid = $document->employeeid;
+            
+            // Delete file from storage
+            if ($document->docpath && Storage::disk('public')->exists('documents/' . $document->docpath)) {
+                Storage::disk('public')->delete('documents/' . $document->docpath);
+            }
+            
+            $document->delete();
+            
+            // If AJAX request (check both ajax() and X-Requested-With header), return updated modal content
+            if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                $employeeDocuments = EmployeeDocument::where('employeeid', $employeeid)
+                    ->orderBy('docid', 'DESC')
+                    ->get();
+                
+                return view('storeowner.document.modal', [
+                    'id' => $employeeid,
+                    'employee_document' => $employeeDocuments,
+                ]);
+            }
+            
+            return redirect()->route('storeowner.document.index')
+                ->with('success', 'Record has been deleted successfully');
+        } catch (\Exception $e) {
+            // If AJAX request, return error response
+            if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json(['error' => 'Error deleting document: ' . $e->getMessage()], 500);
+            }
+            
+            return redirect()->route('storeowner.document.index')
+                ->with('error', 'Error deleting document: ' . $e->getMessage());
+        }
     }
 }
 

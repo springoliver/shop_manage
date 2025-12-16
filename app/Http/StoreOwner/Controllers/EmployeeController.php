@@ -7,6 +7,7 @@ use App\Models\StoreEmployee;
 use App\Models\Store;
 use App\Models\UserGroup;
 use App\Models\Department;
+use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,13 +20,13 @@ use PHPMailer\PHPMailer\Exception;
 
 class EmployeeController extends Controller
 {
+    use HandlesEmployeeAccess;
     /**
      * Display a listing of the employees.
      */
     public function index(Request $request): View
     {
-        $user = auth('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Check if viewing ex-employees or active employees
         $viewType = $request->get('type', 'active'); // 'active' or 'ex'
@@ -59,8 +60,7 @@ class EmployeeController extends Controller
      */
     public function create(): View
     {
-        $user = auth('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get user groups for the current store
         $groups = DB::table('stoma_store_usergroup as su')
@@ -125,8 +125,7 @@ class EmployeeController extends Controller
             'profile_img' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
         
-        $user = auth('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         $ip = $request->ip();
         
         // Generate random login code
@@ -267,8 +266,7 @@ class EmployeeController extends Controller
         $employeeid = base64_decode($employeeid);
         $employee = StoreEmployee::findOrFail($employeeid);
         
-        $user = auth('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         
         // Get user groups for the current store
         $groups = DB::table('stoma_store_usergroup as su')
@@ -336,8 +334,7 @@ class EmployeeController extends Controller
             'profile_img' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
         
-        $user = auth('storeowner')->user();
-        $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
+        $storeid = $this->getStoreId();
         $ip = $request->ip();
         
         // Handle profile photo upload

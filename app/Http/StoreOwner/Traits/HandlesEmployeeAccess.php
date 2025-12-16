@@ -17,7 +17,9 @@ trait HandlesEmployeeAccess
         // Check storeowner guard first
         $storeowner = Auth::guard('storeowner')->user();
         if ($storeowner) {
-            return session('storeid', $storeowner->stores->first()->storeid ?? 0);
+            // Use null-safe operator to prevent errors if stores relationship is null
+            $store = $storeowner->stores?->first();
+            return session('storeid', $store?->storeid ?? 0);
         }
         
         // Check employee guard

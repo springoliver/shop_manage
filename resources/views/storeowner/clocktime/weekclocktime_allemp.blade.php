@@ -130,13 +130,33 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     @if($detail->clockin)
                                         @php
-                                            $rosterStart = \Carbon\Carbon::parse($detail->roster_start_time ?? '00:00:00');
+                                            // Safely parse roster_start_time - handle '0', empty, or invalid values
+                                            $rosterStartTime = $detail->roster_start_time ?? null;
+                                            if (empty($rosterStartTime) || $rosterStartTime === '0' || $rosterStartTime === '00:00:00') {
+                                                $rosterStartTime = null;
+                                            }
+                                            
                                             $clockIn = \Carbon\Carbon::parse($detail->clockin);
+                                            
+                                            // Only compare if we have a valid roster start time
+                                            $isLate = false;
+                                            if ($rosterStartTime) {
+                                                try {
+                                                    $rosterStart = \Carbon\Carbon::parse($rosterStartTime);
+                                                    // Compare only the time portion (not date)
+                                                    $rosterTime = $rosterStart->format('H:i:s');
+                                                    $clockInTime = $clockIn->format('H:i:s');
+                                                    $isLate = $rosterTime < $clockInTime;
+                                                } catch (\Exception $e) {
+                                                    // If parsing fails, don't mark as late
+                                                    $isLate = false;
+                                                }
+                                            }
                                         @endphp
-                                        @if($detail->roster_start_time && $detail->roster_start_time !== '0' && $rosterStart->lt($clockIn))
-                                            <span class="text-red-600">{{ \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d H:i') }}</span>
+                                        @if($isLate)
+                                            <span class="text-red-600">{{ $clockIn->format('Y-m-d H:i') }}</span>
                                         @else
-                                            <span class="text-green-600">{{ \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d H:i') }}</span>
+                                            <span class="text-green-600">{{ $clockIn->format('Y-m-d H:i') }}</span>
                                         @endif
                                     @endif
                                 </td>

@@ -1,13 +1,13 @@
 <div class="flex items-center justify-between w-full mb-4 pb-3 border-b border-gray-200">
     <h4 class="text-lg font-semibold text-gray-900">Employee Document Detail</h4>
-    <button type="button" class="text-gray-400 hover:text-gray-600" onclick="document.getElementById('myModalImage').classList.add('hidden')" aria-label="Close">
+    <button type="button" class="text-gray-400 hover:text-gray-600" onclick="closeDocumentModal()" aria-label="Close">
         <i class="fas fa-times"></i>
     </button>
 </div>
 <div class="modal-body p-6">
-    <form action="{{ route('storeowner.document.store') }}" method="POST" enctype="multipart/form-data" id="modalForm">
+    <form action="{{ route('storeowner.document.update') }}" method="POST" enctype="multipart/form-data" id="modalForm">
         @csrf
-        <input type="hidden" name="employeeid" value="{{ $id }}" />
+        <input type="hidden" name="employeeid" value="{{ $id }}" id="modalEmployeeId" />
         
         @if($employee_document->count() > 0)
             <div class="mb-6">
@@ -21,17 +21,10 @@
                                 {{ $doc->docname }}
                             </a>
                             <a href="#" 
-                               onclick="event.preventDefault(); if(confirm('Are you sure you want to delete this document?')) { document.getElementById('delete-form-{{ $doc->docid }}').submit(); }"
+                               onclick="event.preventDefault(); event.stopPropagation(); return deleteDocument({{ $doc->docid }}, '{{ route("storeowner.document.destroy", $doc->docid) }}');"
                                class="text-red-600 hover:text-red-800 text-sm">
                                 Remove
                             </a>
-                            <form id="delete-form-{{ $doc->docid }}" 
-                                  action="{{ route('storeowner.document.destroy', $doc->docid) }}" 
-                                  method="POST" 
-                                  style="display: none;">
-                                @csrf
-                                @method('DELETE')
-                            </form>
                         </div>
                     @endforeach
                 </div>
@@ -61,7 +54,7 @@
 
             <div class="flex items-center justify-end gap-3">
                 <button type="button" 
-                        onclick="document.getElementById('myModalImage').classList.add('hidden')" 
+                        onclick="closeDocumentModal()" 
                         class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
                     Cancel
                 </button>

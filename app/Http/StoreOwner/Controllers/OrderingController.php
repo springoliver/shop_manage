@@ -879,6 +879,7 @@ class OrderingController extends Controller
     {
         $storeid = $this->getStoreId();
         
+        // Match CI's get_allpo_chart_weekly: NO filter by purchase_orders_type, gets ALL purchase orders
         $data = PurchaseOrder::where('storeid', $storeid)
             ->select(
                 DB::raw('WEEK(delivery_date) as week'),
@@ -891,7 +892,7 @@ class OrderingController extends Controller
             ->get()
             ->map(function($item) {
                 return [
-                    'week' => (int)$item->week,
+                    'week' => (string)$item->week, // String format to match CI
                     'year' => (int)$item->year,
                     'total_amount' => (float)$item->total_amount
                 ];

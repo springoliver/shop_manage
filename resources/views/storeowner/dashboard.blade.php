@@ -442,24 +442,21 @@ use Illuminate\Support\Facades\Route;
                 <!-- Weekly Purchase Orders Chart -->
                 @if(in_array('Ordering', $installedModuleNames) && Route::has('storeowner.ordering.get_allpo_chart_weekly'))
                 <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Weekly Purchase Orders</h3>
-                    <div id="bar_chart" class="w-full min-h-[400px]"></div>
+                    <div id="bar_chart" class="w-full" style="height: 500px;"></div>
                 </div>
                 @endif
 
                 <!-- Weekly Employee Hours Chart -->
                 @if(in_array('Clock in-out', $installedModuleNames) && Route::has('storeowner.clocktime.get_hours_chart_weekly'))
                 <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Weekly Employee Hours</h3>
-                    <div id="bar_chart2" class="w-full min-h-[400px]"></div>
+                    <div id="bar_chart2" class="w-full" style="height: 500px;"></div>
                 </div>
                 @endif
 
                 <!-- Weekly Sales Chart -->
                 @if(in_array('Daily Report', $installedModuleNames) && Route::has('storeowner.dailyreport.get_sales_chart_weekly'))
                 <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Weekly Sales Chart</h3>
-                    <div id="bar_chart3" class="w-full min-h-[400px]"></div>
+                    <div id="bar_chart3" class="w-full" style="height: 500px;"></div>
                 </div>
                 @endif
             </div>
@@ -468,35 +465,273 @@ use Illuminate\Support\Facades\Route;
 
     @push('scripts')
     <script>
-        // Dashboard Settings
-        $(document).ready(function() {
-            var settingsURL = '{{ route('storeowner.dashboard.settings') }}';
-            var getSettingsURL = '{{ route('storeowner.dashboard.getSettings') }}';
-            var firstTimeLoad = true;
+        // Function to create bar chart using SVG and vanilla JavaScript - matching Employee dashboard style
+        function createBarChart(containerId, title, data, yLabel) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            // Clear container
+            container.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-10">No data available</p>';
+                return;
+            }
+
+            const width = container.clientWidth || 740;
+            const height = 500;
+            const margin = { top: 40, right: 20, bottom: 80, left: 80 };
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;
+
+            // Find max value for scaling
+            const maxValue = Math.max(...data.map(d => parseFloat(d.value) || 0));
+            const yScale = maxValue > 0 ? chartHeight / maxValue : 1;
+
+            // Create SVG
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            svg.setAttribute('class', 'w-full');
+
+            // Create group for chart
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(${margin.left}, ${margin.top})`);
+
+            // Title - positioned above chart
+            const titleElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            titleElement.setAttribute('x', chartWidth / 2);
+            titleElement.setAttribute('y', -15);
+            titleElement.setAttribute('text-anchor', 'middle');
+            titleElement.setAttribute('class', 'text-base font-semibold fill-current text-gray-900');
+            titleElement.textContent = title;
+            g.appendChild(titleElement);
+
+            // Y-axis label
+            const yLabelElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            yLabelElement.setAttribute('x', -chartHeight / 2);
+            yLabelElement.setAttribute('y', -50);
+            yLabelElement.setAttribute('text-anchor', 'middle');
+            yLabelElement.setAttribute('transform', 'rotate(-90)');
+            yLabelElement.setAttribute('class', 'text-sm fill-current text-gray-600');
+            yLabelElement.textContent = yLabel;
+            g.appendChild(yLabelElement);
+
+            // Calculate bar width - make bars thinner for better visibility with many data points
+            const barCount = data.length;
+            const maxBarWidth = 30; // Maximum bar width
+            const minBarSpacing = 2; // Minimum spacing between bars
+            const totalSpacing = barCount > 1 ? (barCount - 1) * minBarSpacing : 0;
+            const availableWidth = chartWidth - totalSpacing;
+            const calculatedBarWidth = Math.min(maxBarWidth, availableWidth / barCount);
+            const barSpacing = barCount > 1 ? (chartWidth - (calculatedBarWidth * barCount)) / (barCount - 1) : 0;
+
+            // Create tooltip element
+            const tooltip = document.createElement('div');
+            tooltip.id = containerId + '_tooltip';
+            tooltip.style.cssText = 'position: absolute; display: none; background: white; border: 1px solid #ccc; padding: 8px 12px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); pointer-events: none; z-index: 1000; font-size: 12px; white-space: nowrap;';
             
-            // Get current settings
-            $.get(getSettingsURL, function(data) {
-                if(data.status && data.data.length > 0) {
-                    var value = data.data[0].sale_per_labour_hour;
-                    $('input[name="sale_per_labour_hour"][value="' + value + '"]').prop('checked', true);
+            // Ensure parent has position relative for tooltip positioning
+            if (container.parentElement.style.position !== 'relative') {
+                container.parentElement.style.position = 'relative';
+            }
+            container.parentElement.appendChild(tooltip);
+
+            // Draw horizontal grid lines and Y-axis ticks
+            const tickCount = 5;
+            for (let i = 0; i <= tickCount; i++) {
+                const tickValue = (maxValue / tickCount) * i;
+                const tickY = chartHeight - (i * chartHeight / tickCount);
+
+                // Grid line
+                const gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                gridLine.setAttribute('x1', 0);
+                gridLine.setAttribute('y1', tickY);
+                gridLine.setAttribute('x2', chartWidth);
+                gridLine.setAttribute('y2', tickY);
+                gridLine.setAttribute('stroke', '#f3f4f6');
+                gridLine.setAttribute('stroke-width', 1);
+                g.appendChild(gridLine);
+
+                // Tick line
+                const tickLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                tickLine.setAttribute('x1', -5);
+                tickLine.setAttribute('y1', tickY);
+                tickLine.setAttribute('x2', 0);
+                tickLine.setAttribute('y2', tickY);
+                tickLine.setAttribute('stroke', '#9ca3af');
+                tickLine.setAttribute('stroke-width', 1);
+                g.appendChild(tickLine);
+
+                // Tick label
+                const tickLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                tickLabel.setAttribute('x', -10);
+                tickLabel.setAttribute('y', tickY + 4);
+                tickLabel.setAttribute('text-anchor', 'end');
+                tickLabel.setAttribute('class', 'text-xs fill-current text-gray-600');
+                tickLabel.textContent = tickValue.toFixed(2);
+                g.appendChild(tickLabel);
+            }
+
+            // Calculate how many x-axis labels to show (every Nth bar to prevent overcrowding)
+            const maxLabels = 25; // Maximum number of labels to show
+            const labelInterval = Math.max(1, Math.floor(barCount / maxLabels));
+
+            // Draw bars
+            data.forEach((item, index) => {
+                const barHeight = (parseFloat(item.value) || 0) * yScale;
+                const x = index * (calculatedBarWidth + barSpacing);
+                const y = chartHeight - barHeight;
+
+                // Bar rectangle - light blue like Employee dashboard
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', x);
+                rect.setAttribute('y', y);
+                rect.setAttribute('width', calculatedBarWidth);
+                rect.setAttribute('height', barHeight);
+                rect.setAttribute('fill', '#3b82f6'); // Blue-500
+                rect.setAttribute('class', 'cursor-pointer');
+                rect.setAttribute('data-value', item.value);
+                rect.setAttribute('data-label', item.label);
+                
+                // Hover effect - show tooltip
+                rect.addEventListener('mouseenter', function(e) {
+                    tooltip.style.display = 'block';
+                    tooltip.innerHTML = `
+                        <div style="font-weight: 600; margin-bottom: 4px; color: #333;">${item.label}</div>
+                        <div style="color: #3b82f6; font-weight: 600; margin-bottom: 4px;">${yLabel}</div>
+                        <div style="font-size: 16px; font-weight: 600; color: #3b82f6;">${parseFloat(item.value).toFixed(2)}</div>
+                    `;
+                    
+                    rect.setAttribute('fill', '#2563eb'); // Darker blue on hover
+                    
+                    // Force reflow to get tooltip dimensions
+                    tooltip.offsetWidth;
+                });
+                
+                rect.addEventListener('mousemove', function(e) {
+                    // Position tooltip relative to mouse position
+                    const containerRect = container.parentElement.getBoundingClientRect();
+                    const mouseX = e.clientX - containerRect.left;
+                    const mouseY = e.clientY - containerRect.top;
+                    
+                    // Position tooltip above and to the right of mouse, but adjust if needed
+                    let tooltipX = mouseX + 10;
+                    let tooltipY = mouseY - tooltip.offsetHeight - 10;
+                    
+                    // Adjust if tooltip goes off right edge
+                    if (tooltipX + tooltip.offsetWidth > containerRect.width) {
+                        tooltipX = mouseX - tooltip.offsetWidth - 10;
+                    }
+                    
+                    // Adjust if tooltip goes off left edge
+                    if (tooltipX < 0) {
+                        tooltipX = 10;
+                    }
+                    
+                    // Adjust if tooltip goes off top
+                    if (tooltipY < 0) {
+                        tooltipY = mouseY + 10;
+                    }
+                    
+                    tooltip.style.left = tooltipX + 'px';
+                    tooltip.style.top = tooltipY + 'px';
+                });
+                
+                rect.addEventListener('mouseleave', function() {
+                    tooltip.style.display = 'none';
+                    rect.setAttribute('fill', '#3b82f6'); // Reset to original blue
+                });
+                
+                g.appendChild(rect);
+
+                // X-axis label - only show every Nth label to prevent overcrowding
+                if (index % labelInterval === 0 || index === data.length - 1) {
+                    const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    labelText.setAttribute('x', x + calculatedBarWidth / 2);
+                    labelText.setAttribute('y', chartHeight + 20);
+                    labelText.setAttribute('text-anchor', 'middle');
+                    labelText.setAttribute('class', 'text-xs fill-current text-gray-600');
+                    labelText.setAttribute('style', 'font-size: 11px;');
+                    labelText.textContent = item.label;
+                    g.appendChild(labelText);
                 }
             });
+
+            // Y-axis line
+            const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            yAxis.setAttribute('x1', 0);
+            yAxis.setAttribute('y1', 0);
+            yAxis.setAttribute('x2', 0);
+            yAxis.setAttribute('y2', chartHeight);
+            yAxis.setAttribute('stroke', '#e5e7eb');
+            yAxis.setAttribute('stroke-width', 2);
+            g.appendChild(yAxis);
+
+            // X-axis line
+            const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            xAxis.setAttribute('x1', 0);
+            xAxis.setAttribute('y1', chartHeight);
+            xAxis.setAttribute('x2', chartWidth);
+            xAxis.setAttribute('y2', chartHeight);
+            xAxis.setAttribute('stroke', '#e5e7eb');
+            xAxis.setAttribute('stroke-width', 2);
+            g.appendChild(xAxis);
+
+            svg.appendChild(g);
+            container.appendChild(svg);
+        }
+
+        // Wait for jQuery and Vite bundle to be fully loaded
+        (function() {
+            var retries = 0;
+            var maxRetries = 50; // 5 seconds max wait (50 * 100ms)
             
-            // Update settings on change
-            $('input[name="sale_per_labour_hour"]').on('change', function() {
-                if(!firstTimeLoad) {
-                    $.post(settingsURL, {
-                        '_token': '{{ csrf_token() }}',
-                        'value': $(this).val()
-                    }, function(data) {
-                        if(data.status) {
-                            $("#weekNumberForm").submit();
+            function initDashboard() {
+                // Check if jQuery is available
+                var $ = window.jQuery || window.$;
+                
+                if (!$ || typeof $ !== 'function') {
+                    retries++;
+                    if (retries < maxRetries) {
+                        setTimeout(initDashboard, 100);
+                        return;
+                    } else {
+                        console.error('jQuery failed to load after ' + maxRetries + ' retries');
+                        return;
+                    }
+                }
+                
+                // Ensure DOM is ready
+                $(document).ready(function() {
+                    // Dashboard Settings
+                    var settingsURL = '{{ route('storeowner.dashboard.settings') }}';
+                    var getSettingsURL = '{{ route('storeowner.dashboard.getSettings') }}';
+                    var firstTimeLoad = true;
+                    
+                    // Get current settings
+                    $.get(getSettingsURL, function(data) {
+                        if(data.status && data.data.length > 0) {
+                            var value = data.data[0].sale_per_labour_hour;
+                            $('input[name="sale_per_labour_hour"][value="' + value + '"]').prop('checked', true);
                         }
                     });
-                } else {
-                    firstTimeLoad = false;
-                }
-            });
+                    
+                    // Update settings on change
+                    $('input[name="sale_per_labour_hour"]').on('change', function() {
+                        if(!firstTimeLoad) {
+                            $.post(settingsURL, {
+                                '_token': '{{ csrf_token() }}',
+                                'value': $(this).val()
+                            }, function(data) {
+                                if(data.status) {
+                                    $("#weekNumberForm").submit();
+                                }
+                            });
+                        } else {
+                            firstTimeLoad = false;
+                        }
+                    });
 
             // Weekly Purchase Orders Chart
             @if(in_array('Ordering', $installedModuleNames) && Route::has('storeowner.ordering.get_allpo_chart_weekly'))
@@ -510,38 +745,14 @@ use Illuminate\Support\Facades\Route;
                     try {
                         var jsonData = typeof data1 === 'string' ? JSON.parse(data1) : data1;
                         
-                        if (!jsonData || jsonData.length === 0) {
-                            document.getElementById('bar_chart').innerHTML = '<p class="text-center text-gray-500 py-8">No data available</p>';
-                            return;
-                        }
-
-                        const maxValue = Math.max(...jsonData.map(item => parseFloat(item.total_amount || 0)));
-
-                        // Create chart HTML
-                        let chartHTML = '<div class="space-y-4">';
-                        
-                        jsonData.forEach(function(item) {
-                            const amount = parseFloat(item.total_amount || 0);
-                            const percentage = maxValue > 0 ? (amount / maxValue) * 100 : 0;
-                            const barWidth = Math.max(percentage, 2); // Minimum 2% width for visibility
-                            const label = "Week " + item.week + " - " + item.year;
-                            
-                            chartHTML += `
-                                <div class="flex items-center">
-                                    <div class="w-32 text-sm font-medium text-gray-700 mr-4 text-right">${label}</div>
-                                    <div class="flex-1 relative">
-                                        <div class="bg-gray-200 rounded-full h-8 flex items-center">
-                                            <div class="bg-blue-600 h-8 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%; min-width: 2%;">
-                                                <span class="text-white text-xs font-medium">€${amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
+                        const chartData = jsonData.map(function(item) {
+                            return {
+                                label: item.week.toString(),
+                                value: parseFloat(item.total_amount || 0)
+                            };
                         });
                         
-                        chartHTML += '</div>';
-                        document.getElementById('bar_chart').innerHTML = chartHTML;
+                        createBarChart('bar_chart', 'Weekly Purchase Orders', chartData, 'Total Amount');
                     } catch (error) {
                         console.error('Error loading Weekly Purchase Orders chart:', error);
                         document.getElementById('bar_chart').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
@@ -566,38 +777,14 @@ use Illuminate\Support\Facades\Route;
                     try {
                         var jsonData = typeof data2 === 'string' ? JSON.parse(data2) : data2;
                         
-                        if (!jsonData || jsonData.length === 0) {
-                            document.getElementById('bar_chart2').innerHTML = '<p class="text-center text-gray-500 py-8">No data available</p>';
-                            return;
-                        }
-
-                        const maxValue = Math.max(...jsonData.map(item => parseFloat(item.hours_worked || 0)));
-
-                        // Create chart HTML
-                        let chartHTML = '<div class="space-y-4">';
-                        
-                        jsonData.forEach(function(item) {
-                            const hours = parseFloat(item.hours_worked || 0);
-                            const percentage = maxValue > 0 ? (hours / maxValue) * 100 : 0;
-                            const barWidth = Math.max(percentage, 2); // Minimum 2% width for visibility
-                            const label = item.weekno || 'N/A';
-                            
-                            chartHTML += `
-                                <div class="flex items-center">
-                                    <div class="w-32 text-sm font-medium text-gray-700 mr-4 text-right">${label}</div>
-                                    <div class="flex-1 relative">
-                                        <div class="bg-gray-200 rounded-full h-8 flex items-center">
-                                            <div class="bg-green-600 h-8 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%; min-width: 2%;">
-                                                <span class="text-white text-xs font-medium">${hours.toFixed(2)} hrs</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
+                        const chartData = jsonData.map(function(item) {
+                            return {
+                                label: item.weekno.toString(),
+                                value: parseFloat(item.hours_worked || 0)
+                            };
                         });
                         
-                        chartHTML += '</div>';
-                        document.getElementById('bar_chart2').innerHTML = chartHTML;
+                        createBarChart('bar_chart2', 'Weekly Employee Hours Chart', chartData, 'Total Hours');
                     } catch (error) {
                         console.error('Error loading Weekly Employee Hours chart:', error);
                         document.getElementById('bar_chart2').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
@@ -622,38 +809,14 @@ use Illuminate\Support\Facades\Route;
                     try {
                         var jsonData = typeof data3 === 'string' ? JSON.parse(data3) : data3;
                         
-                        if (!jsonData || jsonData.length === 0) {
-                            document.getElementById('bar_chart3').innerHTML = '<p class="text-center text-gray-500 py-8">No data available</p>';
-                            return;
-                        }
-
-                        const maxValue = Math.max(...jsonData.map(item => parseFloat(item.total_sell || 0)));
-
-                        // Create chart HTML
-                        let chartHTML = '<div class="space-y-4">';
-                        
-                        jsonData.forEach(function(item) {
-                            const sales = parseFloat(item.total_sell || 0);
-                            const percentage = maxValue > 0 ? (sales / maxValue) * 100 : 0;
-                            const barWidth = Math.max(percentage, 2); // Minimum 2% width for visibility
-                            const label = item.week || 'N/A';
-                            
-                            chartHTML += `
-                                <div class="flex items-center">
-                                    <div class="w-32 text-sm font-medium text-gray-700 mr-4 text-right">${label}</div>
-                                    <div class="flex-1 relative">
-                                        <div class="bg-gray-200 rounded-full h-8 flex items-center">
-                                            <div class="bg-purple-600 h-8 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%; min-width: 2%;">
-                                                <span class="text-white text-xs font-medium">€${sales.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
+                        const chartData = jsonData.map(function(item) {
+                            return {
+                                label: item.week.toString(),
+                                value: parseFloat(item.total_sell || 0)
+                            };
                         });
                         
-                        chartHTML += '</div>';
-                        document.getElementById('bar_chart3').innerHTML = chartHTML;
+                        createBarChart('bar_chart3', 'Weekly Sales Chart', chartData, 'Total Sales');
                     } catch (error) {
                         console.error('Error loading Weekly Sales chart:', error);
                         document.getElementById('bar_chart3').innerHTML = '<p class="text-center text-red-500 py-8">Error loading chart data. Please try again.</p>';
@@ -665,7 +828,12 @@ use Illuminate\Support\Facades\Route;
                 }
             });
             @endif
-        });
+                }); // End of $(document).ready
+            } // End of initDashboard function
+            
+            // Start initialization
+            initDashboard();
+        })(); // End of IIFE
     </script>
     @endpush
 </x-storeowner-app-layout>

@@ -128,17 +128,12 @@
                                                 <i class="fas fa-download"></i>
                                             </a>
                                             <a href="#" 
-                                               onclick="event.preventDefault(); if(confirm('Are you sure you want to delete this payslip?')) { document.getElementById('delete-form-{{ $payslip->payslipid }}').submit(); }"
-                                               class="text-red-600 hover:text-red-800" title="Delete">
+                                               class="text-red-600 hover:text-red-800 delete-payslip" 
+                                               title="Delete"
+                                               data-href="{{ route('storeowner.employeepayroll.destroy', base64_encode($payslip->payslipid)) }}"
+                                               data-payslipid="{{ $payslip->payslipid }}">
                                                 <i class="fas fa-trash"></i>
                                             </a>
-                                            <form id="delete-form-{{ $payslip->payslipid }}" 
-                                                  action="{{ route('storeowner.employeepayroll.destroy', base64_encode($payslip->payslipid)) }}" 
-                                                  method="POST" 
-                                                  style="display: none;">
-                                                @csrf
-                                                @method('DELETE')
-                                            </form>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -168,24 +163,92 @@
         <i class="fas fa-eye ml-2"></i> View
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden" id="confirm-delete-modal">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Delete</h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-600" onclick="document.getElementById('confirm-delete-modal').classList.add('hidden')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500">Are you sure you want to delete this Payslip?</p>
+                </div>
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button type="button" 
+                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+                            onclick="document.getElementById('confirm-delete-modal').classList.add('hidden')">
+                        Cancel
+                    </button>
+                    <form id="delete-confirm-form" method="POST" style="display: inline;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" 
+                                class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                            Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
     <script>
-        // Search functionality
-        document.getElementById('searchbox')?.addEventListener('keyup', function() {
-            const searchTerm = this.value.toLowerCase();
-            const table = document.getElementById('table-new');
-            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        // Wait for jQuery to be available
+        (function() {
+            var retries = 0;
+            var maxRetries = 50;
             
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
+            function initPayrollPage() {
+                var $ = window.jQuery || window.$;
+                
+                if (!$ || typeof $ !== 'function') {
+                    retries++;
+                    if (retries < maxRetries) {
+                        setTimeout(initPayrollPage, 100);
+                        return;
+                    } else {
+                        console.error('jQuery failed to load');
+                        return;
+                    }
                 }
+                
+                $(document).ready(function() {
+                    // Search functionality
+                    $('#searchbox').on('keyup', function() {
+                        const searchTerm = $(this).val().toLowerCase();
+                        $('#table-new tbody tr').each(function() {
+                            const text = $(this).text().toLowerCase();
+                            if (text.includes(searchTerm)) {
+                                $(this).show();
+                            } else {
+                                $(this).hide();
+                            }
+                        });
+                    });
+                    
+                    // Delete confirmation modal
+                    $('.delete-payslip').on('click', function(e) {
+                        e.preventDefault();
+                        const deleteUrl = $(this).data('href');
+                        $('#delete-confirm-form').attr('action', deleteUrl);
+                        $('#confirm-delete-modal').removeClass('hidden');
+                    });
+                    
+                    // Close modal when clicking outside
+                    $('#confirm-delete-modal').on('click', function(e) {
+                        if ($(e.target).is('#confirm-delete-modal')) {
+                            $(this).addClass('hidden');
+                        }
+                    });
+                });
             }
-        });
+            
+            initPayrollPage();
+        })();
     </script>
     @endpush
 </x-storeowner-app-layout>

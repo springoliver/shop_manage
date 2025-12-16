@@ -140,7 +140,7 @@
                         Date of Birth <span class="text-red-500">*</span>
                     </label>
                     <div class="w-3/4">
-                        <input type="text" name="dateofbirth" id="dateofbirth" value="{{ old('dateofbirth', $employee->dateofbirth ? \Carbon\Carbon::parse($employee->dateofbirth)->format('d-m-Y') : '') }}" autocomplete="off" required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="dd-mm-yyyy">
+                        <input type="date" name="dateofbirth" id="dateofbirth" value="{{ old('dateofbirth', $employee->dateofbirth ? \Carbon\Carbon::parse($employee->dateofbirth)->format('Y-m-d') : '') }}" required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" max="{{ date('Y-m-d') }}">
                         @error('dateofbirth')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -153,11 +153,16 @@
                         Profile Photo
                     </label>
                     <div class="w-3/4">
-                        @if($employee->profile_photo && Storage::disk('public')->exists($employee->profile_photo))
-                            <img src="{{ Storage::url($employee->profile_photo) }}" alt="Profile Photo" class="h-12 w-12 rounded-full object-cover mb-2">
+                        @if($employee->profile_photo)
+                            @php
+                                // Check if profile_photo path exists in storage
+                                $photoExists = Storage::disk('public')->exists($employee->profile_photo);
+                                $photoUrl = $photoExists ? Storage::url($employee->profile_photo) : asset('images/no-image.png');
+                            @endphp
+                            <img src="{{ $photoUrl }}" alt="Profile Photo" class="h-20 w-20 rounded-full object-cover mb-2 border-2 border-gray-300" onerror="this.onerror=null; this.src='{{ asset('images/no-image.png') }}';">
                         @else
-                            <div class="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center mb-2">
-                                <i class="fas fa-user text-gray-400"></i>
+                            <div class="h-20 w-20 bg-gray-200 rounded-full flex items-center justify-center mb-2 border-2 border-gray-300">
+                                <i class="fas fa-user text-gray-400 text-2xl"></i>
                             </div>
                         @endif
                     </div>
@@ -212,12 +217,6 @@
 
     @push('scripts')
     <script>
-        // Date picker initialization
-        flatpickr("#dateofbirth", {
-            dateFormat: "d-m-Y",
-            maxDate: "today"
-        });
-
         // Show/hide image upload based on radio selection
         document.addEventListener('DOMContentLoaded', function() {
             const upimgYes = document.getElementById('upimgy');

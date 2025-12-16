@@ -10,6 +10,8 @@ use App\Models\Store;
 use App\Models\DashboardSettings;
 use App\Models\Department;
 use App\Models\PurchaseOrder;
+use App\Models\Week;
+use App\Models\Year;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +37,13 @@ class DashboardController extends Controller
      */
     public function index(Request $request): View|RedirectResponse
     {
+        // Insert week number if not exists (like CI's cron->insertweeknumber())
+        try {
+            $this->insertWeekNumber();
+        } catch (\Exception $e) {
+            // Silently fail if week insertion fails
+        }
+        
         $storeid = $this->getStoreId();
         
         // Get installed modules
@@ -560,5 +569,48 @@ class DashboardController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Insert week number if it doesn't exist (matching CI's cron->insertweeknumber()).
+     * This ensures the current week and year are in the database for dashboard functionality.
+     */
+    protected function insertWeekNumber(): void
+    {
+        $ddate = date('Y-m-d H:i:s');
+        $date = new \DateTime($ddate);
+        $week = (int)$date->format("W");
+        $year = (int)date('Y');
+
+        // Check if year exists
+        $yearModel = Year::where('year', $year)->first();
+
+        if ($yearModel) {
+            $yearid = $yearModel->yearid;
+            // Check if week exists
+            $weekModel = Week::where('weeknumber', $week)
+                ->where('yearid', $yearid)
+                ->first();
+
+            if (!$weekModel) {
+                // Insert week number
+                Week::create([
+                    'weeknumber' => $week,
+                    'yearid' => $yearid,
+                ]);
+            }
+        } else {
+            // Insert year
+            $yearModel = Year::create([
+                'year' => $year,
+            ]);
+            $yearid = $yearModel->yearid;
+
+            // Insert week
+            Week::create([
+                'weeknumber' => $week,
+                'yearid' => $yearid,
+            ]);
+        }
     }
 }

@@ -23,6 +23,13 @@ class StoreController extends Controller
     public function index(Request $request): View
     {
         $user = auth('storeowner')->user();
+        
+        // This route should only be accessible to storeowners (middleware should prevent employees)
+        if (!$user) {
+            return redirect()->route('storeowner.login')
+                ->with('error', 'You must be logged in as a store owner to access this page.');
+        }
+        
         $ownerid = $user->ownerid;
         
         // Load all stores for client-side pagination and sorting
@@ -98,7 +105,7 @@ class StoreController extends Controller
         $validated = $request->validate([
             'store_name' => ['required', 'string', 'max:255', 'unique:stoma_store,store_name'],
             'typeid' => ['required', 'exists:stoma_storetype,typeid'],
-            'weburl' => ['required', 'url', 'max:255'],
+            'weburl' => ['required', 'string', 'max:255', 'regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i'],
             'store_email' => ['required', 'email', 'max:255', 'unique:stoma_store,store_email'],
             'store_email_pass' => ['nullable', 'string', 'max:255'],
             'manager_email' => ['required', 'email', 'max:255'],
@@ -251,7 +258,7 @@ class StoreController extends Controller
             'storeid' => ['required', 'exists:stoma_store,storeid'],
             'store_name' => ['required', 'string', 'max:255'],
             'typeid' => ['required', 'exists:stoma_storetype,typeid'],
-            'weburl' => ['required', 'url', 'max:255'],
+            'weburl' => ['required', 'string', 'max:255', 'regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i'],
             'store_email' => ['required', 'email', 'max:255'],
             'store_email_pass' => ['nullable', 'string', 'max:255'],
             'manager_email' => ['required', 'email', 'max:255'],
@@ -361,7 +368,7 @@ class StoreController extends Controller
         $validated = $request->validate([
             'store_name' => ['required', 'string', 'max:255', 'unique:stoma_store,store_name,' . $store->storeid . ',storeid'],
             'typeid' => ['required', 'exists:stoma_storetype,typeid'],
-            'weburl' => ['required', 'url', 'max:255'],
+            'weburl' => ['required', 'string', 'max:255', 'regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i'],
             'store_email' => ['required', 'email', 'max:255', 'unique:stoma_store,store_email,' . $store->storeid . ',storeid'],
             'store_email_pass' => ['nullable', 'string', 'max:255'],
             'manager_email' => ['required', 'email', 'max:255'],

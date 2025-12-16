@@ -117,7 +117,21 @@ class RosterController extends Controller
         $departmentid = base64_decode($departmentid);
         $storeid = $this->getStoreId();
         
-        // Get employees without rosters
+        // Get employees without rosters (for Add Roster form dropdown)
+        // Match CI behavior: show ALL employees without rosters (not filtered by department)
+        // This matches Roster Template behavior
+        $employeesForForm = $this->rosterService->getEmployeesWithoutRoster($storeid)
+            ->map(function($emp) {
+                return (object) [
+                    'employeeid' => $emp->employeeid,
+                    'firstname' => $emp->firstname,
+                    'lastname' => $emp->lastname,
+                    'roster_week_hrs' => $emp->roster_week_hrs ?? 0,
+                    'roster_day_hrs' => $emp->roster_day_hrs ?? 0,
+                ];
+            });
+        
+        // Get employees without rosters (for service method)
         $employees = $this->rosterService->getEmployeesWithoutRoster($storeid);
         
         // Get rosters by department
@@ -136,7 +150,7 @@ class RosterController extends Controller
             ->where('status', 'Enable')
             ->get();
         
-        return view('storeowner.roster.index_dept', compact('employees', 'weekroster', 'employeedata', 'departments', 'departmentid'));
+        return view('storeowner.roster.index_dept', compact('employees', 'employeesForForm', 'weekroster', 'employeedata', 'departments', 'departmentid'));
     }
 
     /**

@@ -270,6 +270,7 @@ class EmployeePayrollController extends Controller
 
     /**
      * Download payslip PDF.
+     * Matches CI behavior: opens PDF in browser instead of forcing download.
      */
     public function downloadPdf($id)
     {
@@ -281,10 +282,40 @@ class EmployeePayrollController extends Controller
         $payslipid = base64_decode($id);
         $payslip = Payslip::findOrFail($payslipid);
         
-        $filePath = storage_path('app/public/payslips/' . $payslip->payslipname);
+        $filePath = 'payslips/' . $payslip->payslipname;
         
-        if (file_exists($filePath)) {
-            return response()->download($filePath, $payslip->payslipname);
+        // Check multiple possible locations for the file
+        $possiblePaths = [
+            public_path('storage/' . $filePath),  // public/storage/payslips/ (symlinked location)
+            storage_path('app/public/' . $filePath),  // storage/app/public/payslips/ (actual storage)
+            public_path($filePath),  // public/payslips/ (direct in public)
+        ];
+        
+        foreach ($possiblePaths as $filePath) {
+            if (file_exists($filePath)) {
+                // Use response()->file() to display PDF in browser (inline) instead of forcing download
+                // This matches CI's behavior of opening the PDF in the browser
+                return response()->file($filePath, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $payslip->payslipname . '"',
+                ]);
+            }
+        }
+        
+        // Fallback: Check if file exists without 'payslips/' prefix
+        $possiblePathsAlt = [
+            public_path('storage/' . $payslip->payslipname),
+            storage_path('app/public/' . $payslip->payslipname),
+            public_path($payslip->payslipname),
+        ];
+        
+        foreach ($possiblePathsAlt as $filePath) {
+            if (file_exists($filePath)) {
+                return response()->file($filePath, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $payslip->payslipname . '"',
+                ]);
+            }
         }
         
         return redirect()->route('storeowner.employeepayroll.index')
@@ -353,7 +384,9 @@ class EmployeePayrollController extends Controller
                 DB::raw('MAX(ep.insertdate) as insertdate'),
                 DB::raw('MAX(ep.insertip) as insertip'),
                 DB::raw('MAX(ep.editdate) as editdate'),
-                DB::raw('MAX(ep.editip) as editip')
+                DB::raw('MAX(ep.editip) as editip'),
+                DB::raw('MAX(e.firstname) as firstname'),
+                DB::raw('MAX(e.lastname) as lastname')
             )
             ->leftJoin('stoma_employee as e', 'e.employeeid', '=', 'ep.employeeid')
             ->where('ep.storeid', $storeid)
@@ -597,10 +630,17 @@ class EmployeePayrollController extends Controller
             $message = 'Employee payroll settings updated successfully.';
         } else {
             // Create new settings
+            // For new records, only set insertdatetime and insertip (matching CI behavior)
+            // Don't set editdatetime/editip - let them be NULL or use default values
             $data['insertdatetime'] = now();
             $data['insertip'] = $request->ip();
-            $data['editdatetime'] = Carbon::parse('0000-00-00 00:00:00');
-            $data['editip'] = '';
+            // Remove editdatetime and editip from data array for new records if they exist
+            if (isset($data['editdatetime'])) {
+                unset($data['editdatetime']);
+            }
+            if (isset($data['editip'])) {
+                unset($data['editip']);
+            }
             
             DB::table('stoma_emp_payroll_ire_employee_settings')->insert($data);
             
@@ -609,6 +649,45 @@ class EmployeePayrollController extends Controller
         
         return redirect()->route('storeowner.employeepayroll.employee-settings')
             ->with('success', $message);
+    }
+
+    /**
+     * Delete employee payroll hours.
+     * Matches CI's clocktime/deleteemphour functionality.
+     */
+    public function deletePayrollHour($payrollId): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $payrollId = base64_decode($payrollId);
+        
+        // Delete the payroll hours record
+        $deleted = DB::table('stoma_emp_payroll_hrs')
+            ->where('payroll_id', $payrollId)
+            ->delete();
+        
+        // Check if request came from compare_weekly_hrs page
+        $referer = request()->header('referer');
+        $isFromCompareWeekly = $referer && strpos($referer, 'compare_weekly_hrs') !== false;
+        
+        if ($deleted) {
+            if ($isFromCompareWeekly) {
+                return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
+                    ->with('success', 'Hours has been deleted successfully');
+            }
+            return redirect()->route('storeowner.employeepayroll.process-payroll')
+                ->with('success', 'Hours has been deleted successfully');
+        } else {
+            if ($isFromCompareWeekly) {
+                return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
+                    ->with('error', 'There is a problem in deleting records');
+            }
+            return redirect()->route('storeowner.employeepayroll.process-payroll')
+                ->with('error', 'There is a problem in deleting records');
+        }
     }
 }
 

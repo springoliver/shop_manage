@@ -52,68 +52,64 @@
 
             <!-- Chart Container -->
             <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Company Performance - Weekly Total PO</h3>
-                <div id="bar_chart" class="mt-6">
-                    <div class="text-center text-gray-500 py-8">Loading chart data...</div>
-                </div>
+                <div id="bar_chart" style="width: 900px; height: 500px;"></div>
             </div>
         </div>
     </div>
 
     @push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        // Load the Visualization API and the bar package.
+        google.charts.load('current', {'packages':['bar']});
+        // Set a callback to run when the Google Visualization API is loaded.
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
             fetch('{{ route('storeowner.ordering.get_allpo_chart_weekly') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             })
             .then(response => response.json())
-            .then(data => {
-                drawChart(data);
+            .then(data1 => {
+                // Create our data table out of JSON data loaded from server.
+                var data = new google.visualization.DataTable();
+
+                data.addColumn('string', 'Week');
+                data.addColumn('number', 'Total PO inc Tax');
+
+                var jsonData = data1;
+                
+                for (var i = 0; i < jsonData.length; i++) {
+                    data.addRow([jsonData[i].week, parseInt(jsonData[i].total_amount)]);
+                }
+
+                var options = {
+                    chart: {
+                        title: 'Company Performance',
+                        subtitle: 'Weekly Total PO'
+                    },
+                    width: 900,
+                    height: 500,
+                    axes: {
+                        x: {
+                            0: {side: 'top'}
+                        }
+                    }
+                };
+
+                var chart = new google.charts.Bar(document.getElementById('bar_chart'));
+                chart.draw(data, options);
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('bar_chart').innerHTML = '<div class="text-red-500 text-center py-8">Error loading chart data</div>';
             });
-
-            function drawChart(data) {
-                if (!data || data.length === 0) {
-                    document.getElementById('bar_chart').innerHTML = '<div class="text-gray-500 text-center py-8">No data available</div>';
-                    return;
-                }
-
-                // Find max value for scaling
-                const maxValue = Math.max(...data.map(item => item.total_amount || 0));
-
-                // Create chart HTML
-                let chartHTML = '<div class="space-y-4">';
-                
-                data.forEach(item => {
-                    const percentage = maxValue > 0 ? (item.total_amount / maxValue) * 100 : 0;
-                    const barWidth = Math.max(percentage, 2); // Minimum 2% width for visibility
-                    const label = 'Week ' + item.week + ' - ' + item.year;
-                    
-                    chartHTML += `
-                        <div class="flex items-center">
-                            <div class="w-32 text-sm font-medium text-gray-700 mr-4 text-right">${label}</div>
-                            <div class="flex-1 relative">
-                                <div class="bg-gray-200 rounded-full h-8 flex items-center">
-                                    <div class="bg-purple-600 h-8 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%; min-width: 2%;">
-                                        <span class="text-white text-xs font-medium">€${parseFloat(item.total_amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                chartHTML += '</div>';
-                document.getElementById('bar_chart').innerHTML = chartHTML;
-            }
-        });
+        }
     </script>
     @endpush
 </x-storeowner-app-layout>

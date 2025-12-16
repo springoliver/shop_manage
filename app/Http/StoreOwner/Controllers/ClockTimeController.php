@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
 use Mpdf\Mpdf;
 
 class ClockTimeController extends Controller
@@ -365,6 +366,32 @@ class ClockTimeController extends Controller
     }
 
     /**
+     * Display weekly hours chart view.
+     */
+    public function reportsChartWeekly(): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        return view('storeowner.clocktime.reports_chart_weekly');
+    }
+
+    /**
+     * Display monthly hours chart view.
+     */
+    public function reportsChartMonthly(): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        return view('storeowner.clocktime.reports_chart_monthly');
+    }
+
+    /**
      * Display monthly hours for all employees page (Monthly Hours tab).
      */
     public function monthlyHrsAllEmployee(): View|\Illuminate\Http\RedirectResponse
@@ -571,10 +598,62 @@ class ClockTimeController extends Controller
         
         $empPayrollHrs = $this->clockTimeService->getEmployeeHolidayCalculation($storeid);
         
-        // TODO: Implement PDF generation using Laravel PDF library (e.g., barryvdh/laravel-dompdf)
-        // For now, return a redirect with info message
-        return redirect()->route('storeowner.clocktime.employee_holidays')
-            ->with('info', 'PDF export functionality will be implemented. For now, please use the search results.');
+        // Generate PDF using mPDF (same as CI)
+        try {
+            // Render view to HTML string first (like CI does)
+            $html = view('storeowner.clocktime.export_all_employee_hols', [
+                'empPayrollHrs' => $empPayrollHrs,
+            ])->render();
+            
+            // Free memory immediately after rendering HTML
+            unset($empPayrollHrs);
+            gc_collect_cycles();
+            
+            // Initialize mPDF with landscape orientation (matching CI)
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4-L', // Landscape
+                'margin_left' => 15,
+                'margin_right' => 15,
+                'margin_top' => 15,
+                'margin_bottom' => 15,
+                'margin_header' => 0,
+                'margin_footer' => 0,
+                'tempDir' => storage_path('app/temp'),
+                'autoScriptToLang' => false,
+                'autoLangToFont' => false,
+            ]);
+            
+            // Write HTML to PDF (same as CI's $this->m_pdf->pdf->WriteHTML($html))
+            $mpdf->WriteHTML($html);
+            
+            // Free HTML from memory
+            unset($html);
+            gc_collect_cycles();
+            
+            // Generate filename
+            $pdfFileName = 'All-Employee-Hours&Holiday-Summary.pdf';
+            
+            // Get PDF as string (mode 'S') to return as Laravel response (preserves headers)
+            $pdfContent = $mpdf->Output('', 'S');
+            
+            // Free mPDF from memory
+            unset($mpdf);
+            gc_collect_cycles();
+            
+            // Return as Laravel response with proper headers (D = download, matching CI)
+            return response($pdfContent, 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'attachment; filename="' . $pdfFileName . '"')
+                ->header('Content-Length', strlen($pdfContent));
+            
+        } catch (\Exception $e) {
+            \Log::error('PDF Generation Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()->route('storeowner.clocktime.employee_holidays')
+                ->with('error', 'Error generating PDF: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -938,6 +1017,70 @@ class ClockTimeController extends Controller
     }
 
     /**
+     * Get weekly hours chart data for dashboard (AJAX).
+     * Matches CI's clocktime/get_hours_chart_weekly.
+     */
+    public function getHoursChartWeekly()
+    {
+        $storeid = $this->getStoreId();
+        
+        $data = \Illuminate\Support\Facades\DB::table('stoma_emp_payroll_hrs')
+            ->select([
+                'weekno',
+                'year',
+                \Illuminate\Support\Facades\DB::raw('SUM(CAST(hours_worked AS DECIMAL(10,2))) AS hours_worked')
+            ])
+            ->where('storeid', $storeid)
+            ->groupBy('year', 'weekno')
+            ->orderBy('year', 'DESC')
+            ->orderBy('weekno', 'DESC')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'weekno' => (string)$item->weekno, // String format to match CI
+                    'year' => (int)$item->year,
+                    'hours_worked' => (float)$item->hours_worked
+                ];
+            });
+        
+        return response()->json($data);
+    }
+
+    /**
+     * Matches CI's clocktime/get_hours_chart_monthly.
+     */
+    public function getHoursChartMonthly()
+    {
+        $storeid = $this->getStoreId();
+        
+        $data = \Illuminate\Support\Facades\DB::table('stoma_emp_payroll_hrs')
+            ->select([
+                \Illuminate\Support\Facades\DB::raw('MONTH(week_start) AS mymonth'),
+                'year',
+                \Illuminate\Support\Facades\DB::raw('SUM(CAST(hours_worked AS DECIMAL(10,2))) AS hours_worked')
+            ])
+            ->where('storeid', $storeid)
+            ->groupBy('year', 'mymonth')
+            ->orderBy('year', 'DESC')
+            ->orderBy('mymonth', 'DESC')
+            ->get()
+            ->map(function($item) {
+                // Convert month number to month name
+                $monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 
+                              'July', 'August', 'September', 'October', 'November', 'December'];
+                $monthName = isset($monthNames[(int)$item->mymonth]) ? $monthNames[(int)$item->mymonth] : (string)$item->mymonth;
+                
+                return [
+                    'mymonth' => $monthName, // Month name to match CI
+                    'year' => (int)$item->year,
+                    'hours_worked' => (float)$item->hours_worked
+                ];
+            });
+        
+        return response()->json($data);
+    }
+
+    /**
      * Upload all weekly hours to dashboard.
      */
     public function uploadAllWeeklyHours(Request $request): RedirectResponse
@@ -953,6 +1096,95 @@ class ClockTimeController extends Controller
         // This should save the hours to a dashboard/payroll table
         // For now, redirect back with success message
         return redirect()->back()->with('success', 'Employee hours uploaded successfully.');
+    }
+
+    /**
+     * Show the form for editing employee hours.
+     */
+    public function editEmployeeHours(string $payrollId): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $payrollId = base64_decode($payrollId);
+        $storeid = $this->getStoreId();
+        
+        $empPayrollHrs = $this->clockTimeService->getPayrollHourById($storeid, $payrollId);
+        
+        if (!$empPayrollHrs) {
+            return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
+                ->with('error', 'Payroll hours record not found.');
+        }
+        
+        return view('storeowner.clocktime.edit_employee_hours', compact('empPayrollHrs'));
+    }
+
+    /**
+     * Update employee hours.
+     */
+    public function updateEmployeeHours(Request $request): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $storeid = $this->getStoreId();
+        
+        $validated = $request->validate([
+            'payroll_id' => 'required|string',
+            'hours_worked' => 'required|numeric|min:0',
+            'break_deducted' => 'nullable|numeric|min:0',
+            'sunday_hrs' => 'nullable|numeric|min:0',
+            'owertime1_hrs' => 'nullable|numeric|min:0',
+            'owertime2_hrs' => 'nullable|numeric|min:0',
+            'holiday_hrs' => 'nullable|numeric|min:0',
+            'holiday_days' => 'nullable|numeric|min:0',
+            'sickpay_hrs' => 'nullable|numeric|min:0',
+            'extras1_hrs' => 'nullable|numeric|min:0',
+            'extras2_hrs' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:255',
+        ]);
+        
+        $payrollId = base64_decode($validated['payroll_id']);
+        
+        // Verify the payroll record belongs to this store
+        $payrollRecord = $this->clockTimeService->getPayrollHourById($storeid, $payrollId);
+        if (!$payrollRecord) {
+            return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
+                ->with('error', 'Payroll hours record not found.');
+        }
+        
+        $data = [
+            'hours_worked' => $validated['hours_worked'],
+            'break_deducted' => $validated['break_deducted'] ?? 0,
+            'sunday_hrs' => $validated['sunday_hrs'] ?? 0,
+            'owertime1_hrs' => $validated['owertime1_hrs'] ?? 0,
+            'owertime2_hrs' => $validated['owertime2_hrs'] ?? 0,
+            'holiday_hrs' => $validated['holiday_hrs'] ?? 0,
+            'holiday_days' => $validated['holiday_days'] ?? 0,
+            'sickpay_hrs' => $validated['sickpay_hrs'] ?? 0,
+            'extras1_hrs' => $validated['extras1_hrs'] ?? 0,
+            'extras2_hrs' => $validated['extras2_hrs'] ?? '',
+            'notes' => $validated['notes'] ?? '',
+            'editdate' => now(),
+            'editip' => $request->ip(),
+        ];
+        
+        $updated = DB::table('stoma_emp_payroll_hrs')
+            ->where('payroll_id', $payrollId)
+            ->where('storeid', $storeid)
+            ->update($data);
+        
+        if ($updated) {
+            return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
+                ->with('success', 'Employee hours updated successfully.');
+        }
+        
+        return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
+            ->with('error', 'Failed to update employee hours.');
     }
 }
 

@@ -203,86 +203,150 @@
 
             <!-- Bills Table -->
             <div class="mt-6 bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800">
-                        <i class="fas fa-file-text mr-2"></i> Bills
-                    </h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200" id="table-report">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Desc</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Tax Amount</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Inc. Tax</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No:</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($reports as $report)
+                <div class="p-6">
+                    <!-- Search and Per Page Controls -->
+                    <div class="mb-4 flex justify-between items-center flex-wrap gap-4">
+                        <div class="flex items-center gap-2">
+                            <input type="text" 
+                                   id="searchbox"
+                                   placeholder="Search bills..." 
+                                   class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm">
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-700">Show:</label>
+                            <select id="perPageSelect" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 min-w-[68px] text-sm">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span class="text-sm text-gray-700">entries</span>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200" id="table-report">
+                            <thead class="bg-gray-50">
                                 <tr>
-                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $report->purchase_orders_type }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">
-                                        {{ $report->category->category_name ?? 'Purchasing' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">
-                                        {{ $report->supplier->supplier_name ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $report->products_bought ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">
-                                        {{ $report->delivery_date ? $report->delivery_date->format('Y-m-d') : '' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">
-                                        {{ $report->delivery_date ? $report->delivery_date->format('F - Y') : '' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->total_tax ?? 0, 2) }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->total_amount ?? 0, 2) }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->amount_inc_tax ?? 0, 2) }}</td>
-                                    <td class="px-4 py-3 text-sm">
-                                        @if($report->invoicestatus == 'No')
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                Missing
-                                            </span>
-                                        @else
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Exist</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $report->invoicenumber ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm">
-                                        <div class="flex space-x-2">
-                                            <a href="{{ route('storeowner.ordering.edit_bills', [
-                                                'purchase_orders_id' => base64_encode($report->purchase_orders_id),
-                                                'delivery_date' => base64_encode($report->delivery_date ? $report->delivery_date->format('Y-m-d') : '')
-                                            ]) }}" 
-                                               class="text-blue-600 hover:text-blue-800" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="#" 
-                                               class="text-red-600 hover:text-red-800" 
-                                               title="Delete"
-                                               onclick="event.preventDefault(); openDeleteModal('{{ route('storeowner.ordering.delete-po', base64_encode($report->purchase_orders_id)) }}');">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="type" style="cursor: pointer;">
+                                        Type <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="category" style="cursor: pointer;">
+                                        Category <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="supplier" style="cursor: pointer;">
+                                        Supplier <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="desc" style="cursor: pointer;">
+                                        Desc <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="date" style="cursor: pointer;">
+                                        Date <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="month" style="cursor: pointer;">
+                                        Month <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="tax" style="cursor: pointer;">
+                                        Total Tax Amount <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="total" style="cursor: pointer;">
+                                        Total Amount <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="inc-tax" style="cursor: pointer;">
+                                        Amount Inc. Tax <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="invoice" style="cursor: pointer;">
+                                        Invoice <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="invoice-no" style="cursor: pointer;">
+                                        Invoice No: <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Action
+                                    </th>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="12" class="px-4 py-3 text-center text-sm text-gray-500">
-                                        No bills found
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="billsTableBody">
+                                @forelse($reports as $report)
+                                    <tr class="bill-row hover:bg-gray-50" 
+                                        data-row-index="{{ $loop->index }}"
+                                        data-type="{{ strtolower($report->purchase_orders_type) }}"
+                                        data-category="{{ strtolower($report->category->category_name ?? 'purchasing') }}"
+                                        data-supplier="{{ strtolower($report->supplier->supplier_name ?? 'n/a') }}"
+                                        data-desc="{{ strtolower($report->products_bought ?? '') }}"
+                                        data-date="{{ $report->delivery_date ? $report->delivery_date->format('Y-m-d') : '' }}"
+                                        data-month="{{ $report->delivery_date ? strtolower($report->delivery_date->format('F - Y')) : '' }}"
+                                        data-tax="{{ $report->total_tax ?? 0 }}"
+                                        data-total="{{ $report->total_amount ?? 0 }}"
+                                        data-inc-tax="{{ $report->amount_inc_tax ?? 0 }}"
+                                        data-invoice="{{ strtolower($report->invoicestatus) }}"
+                                        data-invoice-no="{{ strtolower($report->invoicenumber ?? '') }}">
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $report->purchase_orders_type }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            {{ $report->category->category_name ?? 'Purchasing' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            {{ $report->supplier->supplier_name ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $report->products_bought ?? '' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            {{ $report->delivery_date ? $report->delivery_date->format('Y-m-d') : '' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            {{ $report->delivery_date ? $report->delivery_date->format('F - Y') : '' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->total_tax ?? 0, 2) }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->total_amount ?? 0, 2) }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->amount_inc_tax ?? 0, 2) }}</td>
+                                        <td class="px-4 py-3 text-sm">
+                                            @if($report->invoicestatus == 'No')
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                    Missing
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Exist</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $report->invoicenumber ?? '' }}</td>
+                                        <td class="px-4 py-3 text-sm">
+                                            <div class="flex space-x-2">
+                                                <a href="{{ route('storeowner.ordering.edit_bills', [
+                                                    'purchase_orders_id' => base64_encode($report->purchase_orders_id),
+                                                    'delivery_date' => base64_encode($report->delivery_date ? $report->delivery_date->format('Y-m-d') : '')
+                                                ]) }}" 
+                                                   class="text-blue-600 hover:text-blue-800" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="#" 
+                                                   class="text-red-600 hover:text-red-800" 
+                                                   title="Delete"
+                                                   onclick="event.preventDefault(); openDeleteModal('{{ route('storeowner.ordering.delete-po', base64_encode($report->purchase_orders_id)) }}');">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr id="noBillsRow">
+                                        <td colspan="12" class="px-4 py-3 text-center text-sm text-gray-500">
+                                            No bills found
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Client-side Pagination -->
+                    <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Showing <span id="showingStart">1</span> to <span id="showingEnd">10</span> of <span id="totalEntries">{{ $reports->count() }}</span> entries
+                        </div>
+                        <div id="paginationControls" class="flex items-center gap-2">
+                            <!-- Pagination buttons will be generated by JavaScript -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -394,6 +458,285 @@
                     }
                 });
             }
+        });
+
+        // Client-side pagination, search, and sorting for Bills table
+        let currentPage = 1;
+        let perPage = 10;
+        let allRows = [];
+        let filteredRows = [];
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        function initializeBillsPagination() {
+            const tbody = document.getElementById('billsTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.bill-row'));
+            filteredRows = [...allRows];
+            
+            const noBillsRow = document.getElementById('noBillsRow');
+            if (noBillsRow && allRows.length > 0) {
+                noBillsRow.style.display = 'none';
+            }
+            
+            perPage = parseInt(document.getElementById('perPageSelect').value);
+            currentPage = 1;
+            updateBillsDisplay();
+        }
+
+        function updateBillsDisplay() {
+            const tbody = document.getElementById('billsTableBody');
+            allRows = Array.from(tbody.querySelectorAll('tr.bill-row'));
+            
+            const searchTerm = document.getElementById('searchbox')?.value.toLowerCase() || '';
+            
+            if (searchTerm) {
+                filteredRows = allRows.filter(row => {
+                    const text = row.textContent.toLowerCase();
+                    return text.includes(searchTerm);
+                });
+            } else {
+                filteredRows = [...allRows];
+            }
+
+            if (sortColumn) {
+                filteredRows.sort((a, b) => {
+                    const aValue = a.getAttribute(`data-${sortColumn}`) || '';
+                    const bValue = b.getAttribute(`data-${sortColumn}`) || '';
+                    
+                    // Handle date sorting
+                    if (sortColumn === 'date') {
+                        const dateA = new Date(aValue);
+                        const dateB = new Date(bValue);
+                        if (dateA < dateB) return sortDirection === 'asc' ? -1 : 1;
+                        if (dateA > dateB) return sortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                    }
+                    
+                    // Handle numeric sorting for tax, total, inc-tax
+                    if (['tax', 'total', 'inc-tax'].includes(sortColumn)) {
+                        const numA = parseFloat(aValue) || 0;
+                        const numB = parseFloat(bValue) || 0;
+                        if (numA < numB) return sortDirection === 'asc' ? -1 : 1;
+                        if (numA > numB) return sortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                    }
+                    
+                    // String comparison for other columns
+                    if (aValue < bValue) {
+                        return sortDirection === 'asc' ? -1 : 1;
+                    }
+                    if (aValue > bValue) {
+                        return sortDirection === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            const totalPages = Math.ceil(filteredRows.length / perPage);
+            const start = (currentPage - 1) * perPage;
+            const end = Math.min(start + perPage, filteredRows.length);
+
+            if (sortColumn && filteredRows.length > 0) {
+                const noBillsRow = document.getElementById('noBillsRow');
+                
+                allRows.forEach(row => {
+                    if (row.id !== 'noBillsRow') {
+                        row.remove();
+                    }
+                });
+                
+                filteredRows.forEach(row => {
+                    if (row.id !== 'noBillsRow') {
+                        if (noBillsRow && noBillsRow.parentNode) {
+                            tbody.insertBefore(row, noBillsRow);
+                        } else {
+                            tbody.appendChild(row);
+                        }
+                    }
+                });
+                
+                allRows = Array.from(tbody.querySelectorAll('tr.bill-row'));
+                const sortedFilteredIndices = filteredRows.map(row => row.getAttribute('data-row-index'));
+                const newFilteredRows = [];
+                allRows.forEach(row => {
+                    const rowIndex = row.getAttribute('data-row-index');
+                    if (sortedFilteredIndices.includes(rowIndex)) {
+                        newFilteredRows.push(row);
+                    }
+                });
+                filteredRows = newFilteredRows;
+            }
+
+            allRows.forEach(row => {
+                if (row.id !== 'noBillsRow') {
+                    row.style.display = 'none';
+                }
+            });
+
+            const noBillsRow = document.getElementById('noBillsRow');
+            if (noBillsRow) {
+                if (filteredRows.length === 0) {
+                    noBillsRow.style.display = '';
+                } else {
+                    noBillsRow.style.display = 'none';
+                }
+            }
+
+            for (let i = start; i < end; i++) {
+                if (filteredRows[i] && filteredRows[i].id !== 'noBillsRow') {
+                    filteredRows[i].style.display = '';
+                }
+            }
+
+            document.getElementById('showingStart').textContent = filteredRows.length === 0 ? 0 : start + 1;
+            document.getElementById('showingEnd').textContent = end;
+            document.getElementById('totalEntries').textContent = filteredRows.length;
+
+            generateBillsPaginationControls(totalPages);
+        }
+
+        function generateBillsPaginationControls(totalPages) {
+            const paginationDiv = document.getElementById('paginationControls');
+            paginationDiv.innerHTML = '';
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Previous';
+            prevBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === 1 ? ' opacity-50 cursor-not-allowed' : '');
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateBillsDisplay();
+                }
+            };
+            paginationDiv.appendChild(prevBtn);
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                const firstBtn = document.createElement('button');
+                firstBtn.textContent = '1';
+                firstBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                firstBtn.onclick = () => {
+                    currentPage = 1;
+                    updateBillsDisplay();
+                };
+                paginationDiv.appendChild(firstBtn);
+
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md ' + 
+                    (i === currentPage ? 'bg-gray-800 text-white' : 'hover:bg-gray-100');
+                pageBtn.onclick = () => {
+                    currentPage = i;
+                    updateBillsDisplay();
+                };
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'px-2';
+                    paginationDiv.appendChild(ellipsis);
+                }
+
+                const lastBtn = document.createElement('button');
+                lastBtn.textContent = totalPages;
+                lastBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100';
+                lastBtn.onclick = () => {
+                    currentPage = totalPages;
+                    updateBillsDisplay();
+                };
+                paginationDiv.appendChild(lastBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next';
+            nextBtn.className = 'px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100' + (currentPage === totalPages ? ' opacity-50 cursor-not-allowed' : '');
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateBillsDisplay();
+                }
+            };
+            paginationDiv.appendChild(nextBtn);
+        }
+
+        function sortBillsTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            document.querySelectorAll('#table-report .sortable .sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '<i class="fas fa-sort text-gray-400"></i>';
+            });
+
+            const clickedHeader = document.querySelector(`#table-report th[data-sort="${column}"]`);
+            if (clickedHeader) {
+                const indicator = clickedHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = sortDirection === 'asc' 
+                        ? '<i class="fas fa-sort-up text-gray-800"></i>' 
+                        : '<i class="fas fa-sort-down text-gray-800"></i>';
+                }
+            }
+
+            currentPage = 1;
+            updateBillsDisplay();
+        }
+
+        // Initialize bills pagination when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize bills pagination
+            initializeBillsPagination();
+
+            // Search functionality
+            document.getElementById('searchbox')?.addEventListener('keyup', function() {
+                currentPage = 1;
+                updateBillsDisplay();
+            });
+
+            // Per page change
+            document.getElementById('perPageSelect')?.addEventListener('change', function() {
+                perPage = parseInt(this.value);
+                currentPage = 1;
+                updateBillsDisplay();
+            });
+
+            // Sort functionality
+            document.querySelectorAll('#table-report .sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.getAttribute('data-sort');
+                    if (column) {
+                        sortBillsTable(column);
+                    }
+                });
+            });
         });
     </script>
     @endpush
