@@ -194,13 +194,27 @@
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $report->delivery_date ? $report->delivery_date->format('Y-m-d') : '' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $report->invoicenumber ?? '' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">
-                                        <a href="#" 
-                                           class="text-blue-600 hover:underline">
+                                        @if($report->supplier && $report->supplier->supplierid)
+                                            <a href="{{ route('storeowner.ordering.supplier_all_invoices', base64_encode($report->supplier->supplierid)) }}" 
+                                               class="text-blue-600 hover:underline cursor-pointer"
+                                               title="Supplier">
+                                                {{ $report->supplier->supplier_name ?? 'N/A' }}
+                                            </a>
+                                        @else
                                             {{ $report->supplier->supplier_name ?? 'N/A' }}
-                                        </a>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-sm text-gray-900">
-                                        @if($report->delivery_date)
+                                        @if($report->delivery_date && $report->supplier && $report->supplier->supplierid)
+                                            <a href="{{ route('storeowner.ordering.supplier_all_invoices_monthly', [
+                                                'supplierid' => base64_encode($report->supplier->supplierid),
+                                                'delivery_date' => $report->delivery_date->format('Y-m-d')
+                                            ]) }}" 
+                                               class="text-blue-600 hover:underline cursor-pointer"
+                                               title="">
+                                                {{ $report->delivery_date->format('F - Y') }}
+                                            </a>
+                                        @elseif($report->delivery_date)
                                             {{ $report->delivery_date->format('F - Y') }}
                                         @endif
                                     </td>
@@ -220,7 +234,9 @@
                                     <td class="px-4 py-3 text-sm">
                                         @if($report->invoicestatus == 'No')
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                <a href="#" class="text-white">Missing</a>
+                                                <a href="{{ route('storeowner.ordering.edit', $report->purchase_orders_id) }}" 
+                                                   class="text-white hover:underline"
+                                                   style="color:#fff;">Missing</a>
                                             </span>
                                         @else
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Exist</span>
@@ -229,27 +245,36 @@
                                     <td class="px-4 py-3 text-sm">
                                         @if($report->creditnote == 'Yes')
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                <a href="#" class="text-white">Credit Note</a>
+                                                <a href="{{ route('storeowner.ordering.edit', $report->purchase_orders_id) }}" 
+                                                   class="text-white hover:underline cursor-pointer"
+                                                   style="color:#fff;"
+                                                   title="Credit Note">Credit Note</a>
                                             </span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">
-                                        <div class="flex space-x-2">
+                                    <td class="px-4 py-3 text-sm text-center">
+                                        <div class="flex space-x-2 justify-center">
                                             @if(($report->total_products ?? 0) == 0)
-                                                <a href="#" 
-                                                   class="text-blue-600 hover:text-blue-800" title="Edit">
+                                                <a href="{{ route('storeowner.ordering.edit_bills', [
+                                                    'purchase_orders_id' => base64_encode($report->purchase_orders_id),
+                                                    'delivery_date' => base64_encode($report->delivery_date ? $report->delivery_date->format('Y-m-d') : '')
+                                                ]) }}" 
+                                                   class="text-blue-600 hover:text-blue-800 cursor-pointer" 
+                                                   title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                             @else
-                                                <a href="#" 
-                                                   class="text-blue-600 hover:text-blue-800" title="Edit">
+                                                <a href="{{ route('storeowner.ordering.edit', $report->purchase_orders_id) }}" 
+                                                   class="text-blue-600 hover:text-blue-800 cursor-pointer" 
+                                                   title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                             @endif
                                             <a href="#" 
-                                               onclick="event.preventDefault(); openDeleteModal('{{ base64_encode($report->purchase_orders_id) }}')"
-                                               class="text-red-600 hover:text-red-800" 
-                                               title="Delete">
+                                               class="text-red-600 hover:text-red-800 cursor-pointer" 
+                                               title="Delete"
+                                               data-href="{{ route('storeowner.ordering.delete-po', $report->purchase_orders_id) }}"
+                                               onclick="event.preventDefault(); openDeleteModal(this);">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
@@ -282,18 +307,14 @@
                 <div class="mt-2 px-2 py-3">
                     <p class="text-sm text-gray-500">Are you Sure you want to delete this Invoice?</p>
                 </div>
-                <form id="deleteForm" method="POST" class="inline">
-                    @csrf
-                    @method('DELETE')
-                    <div class="flex justify-end space-x-3 mt-4">
-                        <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
-                            Cancel
-                        </button>
-                        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-                            Delete
-                        </button>
-                    </div>
-                </form>
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
+                        Cancel
+                    </button>
+                    <a href="#" id="deleteLink" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-block text-center">
+                        Delete
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -460,11 +481,16 @@
             window.print();
         }
 
-        function openDeleteModal(purchaseOrderId) {
+        function openDeleteModal(element) {
             const modal = document.getElementById('deleteModal');
-            const form = document.getElementById('deleteForm');
-            form.action = '{{ route("storeowner.ordering.delete-po", ":id") }}'.replace(':id', purchaseOrderId);
-            modal.classList.remove('hidden');
+            const deleteLink = document.getElementById('deleteLink');
+            const deleteUrl = element.getAttribute('data-href');
+            if (deleteUrl && deleteLink) {
+                deleteLink.href = deleteUrl;
+                modal.classList.remove('hidden');
+            } else {
+                console.error('Delete URL not found');
+            }
         }
         
         function closeDeleteModal() {

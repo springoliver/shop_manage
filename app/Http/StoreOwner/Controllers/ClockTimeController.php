@@ -123,22 +123,108 @@ class ClockTimeController extends Controller
         
         $clockDetails = $this->clockTimeService->getClockDetailsByDate($storeid, $date, $endDate, $employeeids);
         
-        // Add roster times and calculate totals
+        // Add roster times and calculate totals (matching CI's logic)
         foreach ($clockDetails as $detail) {
             $rosterData = $this->clockTimeService->getRosterHour($detail->employeeid, $detail->weekid, $detail->day);
             $detail->roster_start_time = $rosterData['start_time'];
             $detail->roster_end_time = $rosterData['end_time'];
             
-            // Calculate total roster hours
-            $rosterStart = Carbon::parse($detail->roster_start_time);
-            $rosterEnd = Carbon::parse($detail->roster_end_time);
-            $detail->total_roster_minutes = $rosterEnd->diffInMinutes($rosterStart);
+            // Calculate total roster hours (matching CI's calculation with abs())
+            // CI uses: abs(strtotime($roster_start_time) - strtotime($roster_end_time)) / 60
+            $rosterStartTime = $detail->roster_start_time ?? '00:00';
+            $rosterEndTime = $detail->roster_end_time ?? '00:00';
             
-            // Calculate clock in-out hours
+            // Ensure H:i:s format for strtotime
+            if (strlen($rosterStartTime) == 5) {
+                $rosterStartTime .= ':00';
+            }
+            if (strlen($rosterEndTime) == 5) {
+                $rosterEndTime .= ':00';
+            }
+            
+            // Use strtotime like CI does (matching CI line 167-169)
+            $to_time = strtotime($rosterStartTime);
+            $from_time = strtotime($rosterEndTime);
+            $detail->total_roster_minutes = round(abs($to_time - $from_time) / 60, 2);
+            
+            // Calculate clock in-out hours using CI's roster intersection logic
+            // CI compares time-only values (H:i:s format), not full datetimes
             if ($detail->status !== 'clockout' && $detail->clockin && $detail->clockout) {
                 $clockin = Carbon::parse($detail->clockin);
                 $clockout = Carbon::parse($detail->clockout);
-                $detail->timediff = $clockout->diffInMinutes($clockin);
+                
+                // Get roster times as time strings (H:i format from getRosterHour)
+                $rosterStartTime = $detail->roster_start_time ?? '00:00';
+                $rosterEndTime = $detail->roster_end_time ?? '00:00';
+                
+                // Convert to H:i:s format for strtotime comparison (matching CI)
+                if (strlen($rosterStartTime) == 5) {
+                    $rosterStartTime .= ':00'; // Add seconds if missing
+                }
+                if (strlen($rosterEndTime) == 5) {
+                    $rosterEndTime .= ':00'; // Add seconds if missing
+                }
+                
+                // Get time-only strings from clockin/clockout (matching CI's date('H:i:s', strtotime(...)))
+                $clockinTimeStr = $clockin->format('H:i:s');
+                $clockoutTimeStr = $clockout->format('H:i:s');
+                
+                // CI's logic (line 144): Check if roster_end_time >= clockin (time comparison)
+                // Using strtotime for time-only strings (matching CI's approach)
+                $rosterEndTimestamp = strtotime($rosterEndTime);
+                $clockinTimestamp = strtotime($clockinTimeStr);
+                $rosterStartTimestamp = strtotime($rosterStartTime);
+                $clockoutTimestamp = strtotime($clockoutTimeStr);
+                
+                // Check if roster times are actually set (not "00:00" or "00:00:00")
+                $rosterIsSet = ($rosterStartTime !== '00:00' && $rosterStartTime !== '00:00:00' && 
+                               $rosterEndTime !== '00:00' && $rosterEndTime !== '00:00:00');
+                
+                if ($rosterIsSet) {
+                    // CI's overlap check: roster_end_time >= clockin AND roster_start_time <= clockout
+                    if ($rosterEndTimestamp >= $clockinTimestamp && $rosterStartTimestamp <= $clockoutTimestamp) {
+                        // Determine start time (CI lines 146-154)
+                        $start = '';
+                        if ($rosterStartTimestamp > $clockinTimestamp) {
+                            // Use roster_start_time
+                            $start = date('Y-m-d H:i:s', strtotime($rosterStartTime));
+                        } elseif ($rosterStartTimestamp <= $clockinTimestamp) {
+                            // Use clockin
+                            $start = date('Y-m-d H:i:s', strtotime($clockinTimeStr));
+                        } else {
+                            $start = date('Y-m-d H:i:s', strtotime('00:00:00'));
+                        }
+                        
+                        // Determine end time (CI lines 155-163)
+                        $end = '';
+                        if ($rosterEndTimestamp > $clockoutTimestamp) {
+                            // Use clockout
+                            $end = date('Y-m-d H:i:s', strtotime($clockoutTimeStr));
+                        } elseif ($rosterEndTimestamp <= $clockoutTimestamp) {
+                            // Use roster_end_time
+                            $end = date('Y-m-d H:i:s', strtotime($rosterEndTime));
+                        } else {
+                            $end = date('Y-m-d H:i:s', strtotime('00:00:00'));
+                        }
+                        
+                        // Calculate difference in minutes (matching CI line 175)
+                        // CI uses: round(abs($to_time - $from_time) / 60, 2)
+                        // where $to_time = strtotime($start) and $from_time = strtotime($end)
+                        // This gives minutes (not hours) - CI's variable name is misleading
+                        $to_time = strtotime($start);
+                        $from_time = strtotime($end);
+                        $detail->timediff = round(abs($to_time - $from_time) / 60, 2);
+                    } else {
+                        // No overlap - no hours counted (CI lines 164-170)
+                        $detail->timediff = 0;
+                    }
+                } else {
+                    // No roster set - calculate directly from clockin to clockout (like CI cron.php when inRoster == "No")
+                    // This matches the behavior when roster times are "00:00"
+                    $to_time = strtotime($clockinTimeStr);
+                    $from_time = strtotime($clockoutTimeStr);
+                    $detail->timediff = round(abs($to_time - $from_time) / 60, 2);
+                }
             } else {
                 $detail->timediff = null;
             }

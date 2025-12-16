@@ -1,4 +1,4 @@
-@section('page_header', 'Missing delivery dockets')
+@section('page_header', 'Monthly Orders by Supplier')
 <x-storeowner-app-layout>
     <!-- Breadcrumb -->
     <div class="mb-6">
@@ -40,49 +40,12 @@
                 </div>
             @endif
 
-            <form action="{{ route('storeowner.ordering.missing_delivery_dockets') }}" method="POST" id="myform" name="myform">
-                @csrf
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Date From:</label>
-                        <input type="date" 
-                               name="date_from" 
-                               value="{{ old('date_from', request('date_from')) }}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Date To:</label>
-                        <input type="date" 
-                               name="date_to" 
-                               value="{{ old('date_to', request('date_to')) }}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Supplier:</label>
-                        <select name="supplierid" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
-                            <option value="">--All Suppliers--</option>
-                            @foreach($storeSuppliers as $supplier)
-                                <option value="{{ $supplier->supplierid }}" {{ old('supplierid', request('supplierid')) == $supplier->supplierid ? 'selected' : '' }}>
-                                    {{ $supplier->supplier_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">&nbsp;</label>
-                        <button type="submit" name="submit" value="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                            Search
-                        </button>
-                    </div>
-                </div>
-            </form>
-
             <!-- Navigation Tabs -->
             <div class="mb-4">
                 <ul class="flex space-x-2 border-b border-gray-200">
                     <li>
                         <a href="{{ route('storeowner.ordering.report') }}" 
-                           class="inline-block px-4 py-2 text-gray-600 hover:text-blue-600 hover:border-b-2 hover:border-blue-600">
+                           class="inline-block px-4 py-2 text-blue-600 border-b-2 border-blue-600 font-medium">
                             Purchase orders
                         </a>
                     </li>
@@ -94,7 +57,7 @@
                     </li>
                     <li>
                         <a href="{{ route('storeowner.ordering.missing_delivery_dockets') }}" 
-                           class="inline-block px-4 py-2 text-blue-600 border-b-2 border-blue-600 font-medium">
+                           class="inline-block px-4 py-2 text-gray-600 hover:text-blue-600 hover:border-b-2 hover:border-blue-600">
                             Delivery Dockets
                         </a>
                     </li>
@@ -120,12 +83,14 @@
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. of Products</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Tax Amount</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Inc. Tax</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Docket</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No:</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit Note</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                             </tr>
@@ -133,40 +98,64 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($reports as $report)
                                 <tr>
-                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $report->supplier->supplier_name ?? 'N/A' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                        @if($report->supplier && $report->supplier->supplierid)
+                                            <a href="{{ route('storeowner.ordering.supplier_all_invoices', base64_encode($report->supplier->supplierid)) }}" 
+                                               class="text-blue-600 hover:underline cursor-pointer"
+                                               title="Supplier">
+                                                {{ $report->supplier->supplier_name ?? 'N/A' }}
+                                            </a>
+                                        @else
+                                            {{ $report->supplier->supplier_name ?? 'N/A' }}
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $report->delivery_date ? $report->delivery_date->format('Y-m-d') : '' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                        @if($report->delivery_date && $report->supplier && $report->supplier->supplierid)
+                                            <a href="{{ route('storeowner.ordering.supplier_all_invoices_monthly', [
+                                                'supplierid' => base64_encode($report->supplier->supplierid),
+                                                'delivery_date' => $report->delivery_date->format('Y-m-d')
+                                            ]) }}" 
+                                               class="text-blue-600 hover:underline cursor-pointer"
+                                               title="">
+                                                {{ $report->delivery_date->format('F - Y') }}
+                                            </a>
+                                        @elseif($report->delivery_date)
+                                            {{ $report->delivery_date->format('F - Y') }}
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $report->total_products ?? 0 }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->total_tax ?? 0, 2) }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->total_amount ?? 0, 2) }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">€ {{ number_format($report->amount_inc_tax ?? 0, 2) }}</td>
                                     <td class="px-4 py-3 text-sm">
                                         @if($report->deliverydocketstatus == 'No')
-                                            <button type="button" 
-                                                    class="px-2 py-1 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700"
-                                                    onclick="openStatusModal('{{ $report->purchase_orders_id }}', '{{ $report->deliverydocketstatus }}')">
-                                                Missing
-                                            </button>
-                                        @else
-                                            <button type="button" 
-                                                    class="px-2 py-1 text-xs font-semibold rounded bg-yellow-600 text-white hover:bg-yellow-700"
-                                                    onclick="openStatusModal('{{ $report->purchase_orders_id }}', '{{ $report->deliverydocketstatus }}')">
-                                                Exist
-                                            </button>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-sm">
-                                        @if($report->invoicestatus == 'No')
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                <a href="{{ route('storeowner.ordering.edit', $report->purchase_orders_id) }}" class="text-yellow-800 hover:text-yellow-900">Missing</a>
+                                                <a href="{{ route('storeowner.ordering.missing_delivery_dockets') }}">Missing</a>
                                             </span>
                                         @else
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Exist</span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-sm">
+                                        @if($report->invoicestatus == 'No')
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                <a href="{{ route('storeowner.ordering.edit', $report->purchase_orders_id) }}" 
+                                                   class="text-white hover:underline"
+                                                   style="color:#fff;">Missing</a>
+                                            </span>
+                                        @else
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Exist</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $report->invoicenumber ?? '' }}</td>
+                                    <td class="px-4 py-3 text-sm">
                                         @if($report->creditnote == 'Yes')
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                <a href="{{ route('storeowner.ordering.edit', $report->purchase_orders_id) }}" class="text-yellow-800 hover:text-yellow-900 cursor-pointer" title="Credit Note">Credit Note</a>
+                                                <a href="{{ route('storeowner.ordering.edit', $report->purchase_orders_id) }}" 
+                                                   class="text-white hover:underline cursor-pointer"
+                                                   style="color:#fff;"
+                                                   title="Credit Note">Credit Note</a>
                                             </span>
                                         @endif
                                     </td>
@@ -180,8 +169,8 @@
                                             <a href="#" 
                                                class="text-red-600 hover:text-red-800 cursor-pointer" 
                                                title="Delete"
-                                               data-href="{{ route('storeowner.ordering.delete-po', $report->purchase_orders_id) }}"
-                                               onclick="event.preventDefault(); openDeleteModal(this);">
+                                               data-href="{{ route('storeowner.ordering.delete-po', base64_encode($report->purchase_orders_id)) }}"
+                                               onclick="event.preventDefault(); openDeleteModal('{{ base64_encode($report->purchase_orders_id) }}');">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
@@ -189,7 +178,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="px-4 py-3 text-center text-sm text-gray-500">
+                                    <td colspan="12" class="px-4 py-3 text-center text-sm text-gray-500">
                                         No orders found
                                     </td>
                                 </tr>
@@ -197,42 +186,6 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Status Change Modal -->
-    <div id="statusModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Delivery Docket Status</h3>
-                    <button onclick="closeStatusModal()" class="text-gray-400 hover:text-gray-500">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <form id="statusForm" action="{{ route('storeowner.ordering.update_delivery_dock_status') }}" method="POST">
-                    @csrf
-                    <div class="mb-4">
-                        <label class="inline-flex items-center mr-6">
-                            <input type="radio" name="deliverydocketstatus" value="Yes" class="form-radio" id="statusYes">
-                            <span class="ml-2">Exist</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="deliverydocketstatus" value="No" class="form-radio" id="statusNo">
-                            <span class="ml-2">Missing</span>
-                        </label>
-                        <input type="hidden" name="purchase_orders_id" id="modalPurchaseOrderId">
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="closeStatusModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                            Cancel
-                        </button>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                            Update
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
@@ -250,46 +203,29 @@
                 <div class="mt-2 px-2 py-3">
                     <p class="text-sm text-gray-500">Are you Sure you want to delete this Invoice?</p>
                 </div>
-                <div class="flex justify-end space-x-3 mt-4">
-                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
-                        Cancel
-                    </button>
-                    <a href="#" id="deleteLink" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-block text-center">
-                        Delete
-                    </a>
-                </div>
+                <form id="deleteForm" method="POST" class="inline">
+                    @csrf
+                    @method('DELETE')
+                    <div class="flex justify-end space-x-3 mt-4">
+                        <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                            Delete
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
     @push('scripts')
     <script>
-        function openStatusModal(purchaseOrderId, currentStatus) {
-            document.getElementById('modalPurchaseOrderId').value = purchaseOrderId;
-            
-            if (currentStatus === 'Yes') {
-                document.getElementById('statusYes').checked = true;
-            } else {
-                document.getElementById('statusNo').checked = true;
-            }
-            
-            document.getElementById('statusModal').classList.remove('hidden');
-        }
-
-        function closeStatusModal() {
-            document.getElementById('statusModal').classList.add('hidden');
-        }
-
-        function openDeleteModal(element) {
+        function openDeleteModal(purchaseOrderId) {
             const modal = document.getElementById('deleteModal');
-            const deleteLink = document.getElementById('deleteLink');
-            const deleteUrl = element.getAttribute('data-href');
-            if (deleteUrl && deleteLink) {
-                deleteLink.href = deleteUrl;
-                modal.classList.remove('hidden');
-            } else {
-                console.error('Delete URL not found');
-            }
+            const form = document.getElementById('deleteForm');
+            form.action = '{{ url("storeowner/ordering/delete-po") }}/' + purchaseOrderId;
+            modal.classList.remove('hidden');
         }
         
         function closeDeleteModal() {
@@ -297,23 +233,15 @@
         }
 
         // Close modal when clicking outside
-        document.getElementById('statusModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeStatusModal();
-            }
-        });
-
-        // Close delete modal when clicking outside
         document.getElementById('deleteModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeDeleteModal();
             }
         });
 
-        // Close modal with Escape key
+        // Close modal on Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                closeStatusModal();
                 closeDeleteModal();
             }
         });

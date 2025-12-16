@@ -171,11 +171,26 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     @php
-                                        $rosterStart = \Carbon\Carbon::parse($detail->roster_start_time ?? '00:00');
-                                        $rosterEnd = \Carbon\Carbon::parse($detail->roster_end_time ?? '00:00');
-                                        $totalRosterMinutes = $rosterEnd->diffInMinutes($rosterStart);
-                                        $hours = floor($totalRosterMinutes / 60);
-                                        $minutes = $totalRosterMinutes % 60;
+                                        // Match CI's calculation: abs($to_time - $from_time) / 60
+                                        // CI uses strtotime on time-only strings, which uses today's date
+                                        $rosterStartTime = $detail->roster_start_time ?? '00:00';
+                                        $rosterEndTime = $detail->roster_end_time ?? '00:00';
+                                        
+                                        // Ensure H:i:s format for strtotime
+                                        if (strlen($rosterStartTime) == 5) {
+                                            $rosterStartTime .= ':00';
+                                        }
+                                        if (strlen($rosterEndTime) == 5) {
+                                            $rosterEndTime .= ':00';
+                                        }
+                                        
+                                        // Use strtotime like CI does (matching CI line 167-169)
+                                        $to_time = strtotime($rosterStartTime);
+                                        $from_time = strtotime($rosterEndTime);
+                                        $total_roster_minute = round(abs($to_time - $from_time) / 60, 2);
+                                        
+                                        $hours = floor($total_roster_minute / 60);
+                                        $minutes = $total_roster_minute % 60;
                                     @endphp
                                     {{ $hours }} Hour {{ $minutes }} Minute
                                 </td>

@@ -357,6 +357,10 @@ Route::name('storeowner.')->group(function () {
         // Ordering Reports routes
         Route::get('ordering/report', [StoreOwnerOrderingController::class, 'report'])->name('ordering.report');
         Route::post('ordering/report', [StoreOwnerOrderingController::class, 'report'])->name('ordering.report.submit');
+        Route::get('ordering/supplier_all_invoices/{supplierid}', [StoreOwnerOrderingController::class, 'supplierAllInvoices'])->name('ordering.supplier_all_invoices');
+        Route::get('ordering/supplier_all_invoices_monthly/{supplierid}/{delivery_date}', [StoreOwnerOrderingController::class, 'supplierAllInvoicesMonthly'])->name('ordering.supplier_all_invoices_monthly');
+        Route::get('ordering/edit/{purchase_orders_id}', [StoreOwnerOrderingController::class, 'edit'])->name('ordering.edit');
+        Route::post('ordering/edit/{purchase_orders_id}', [StoreOwnerOrderingController::class, 'edit'])->name('ordering.edit.submit');
         Route::get('ordering/product_report', [StoreOwnerOrderingController::class, 'productReport'])->name('ordering.product_report');
         Route::post('ordering/product_report', [StoreOwnerOrderingController::class, 'productReport'])->name('ordering.product_report.submit');
         Route::get('ordering/missing_delivery_dockets', [StoreOwnerOrderingController::class, 'missingDeliveryDockets'])->name('ordering.missing_delivery_dockets');
@@ -402,8 +406,8 @@ Route::name('storeowner.')->group(function () {
         Route::get('ordering/delete_supplier_doc/{docid}', [StoreOwnerOrderingController::class, 'deleteSupplierDoc'])->name('ordering.delete_supplier_doc');
         Route::post('ordering/get_documents', [StoreOwnerOrderingController::class, 'getDocuments'])->name('ordering.get_documents');
         
-        // Delete Purchase Order
-        Route::delete('ordering/delete-po/{purchase_orders_id}', [StoreOwnerOrderingController::class, 'deletePurchaseOrder'])->name('ordering.delete-po');
+        // Delete Purchase Order (GET method to match CI)
+        Route::get('ordering/delete-po/{purchase_orders_id}', [StoreOwnerOrderingController::class, 'deletePurchaseOrder'])->name('ordering.delete-po');
         
         // AJAX routes
         Route::get('ajax/get_products_by_supplier_id', [StoreOwnerAjaxController::class, 'getProductsBySupplierId'])->name('ajax.products-by-supplier');

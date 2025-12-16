@@ -295,6 +295,12 @@ class OrderingController extends Controller
             }
             
             $reports = $query->orderBy('delivery_date', 'DESC')->get();
+            
+            // Calculate total_products for each report (matching CI's logic)
+            foreach ($reports as $report) {
+                $report->total_products = PurchasedProduct::where('purchase_orders_id', $report->purchase_orders_id)
+                    ->count();
+            }
         } else {
             // Default: last month's orders
             $reports = PurchaseOrder::with(['supplier', 'category'])
@@ -1193,12 +1199,6 @@ class OrderingController extends Controller
         $storeid = $this->getStoreId();
         
         try {
-            $purchase_orders_id = base64_decode($purchase_orders_id);
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Invalid purchase order ID');
-        }
-        
-        try {
             // Delete purchased products first (due to foreign key constraint)
             PurchasedProduct::where('purchase_orders_id', $purchase_orders_id)
                 ->where('storeid', $storeid)
@@ -1210,16 +1210,247 @@ class OrderingController extends Controller
                 ->delete();
             
             if ($deleted) {
+                // Redirect back to the referrer URL (matching CI's behavior)
+                $referrer = request()->headers->get('referer');
+                if ($referrer) {
+                    return redirect($referrer)->with('success', 'Purchase order deleted successfully.');
+                }
                 return redirect()->route('storeowner.ordering.report')
-                    ->with('success', 'Purchase order has been deleted successfully');
+                    ->with('success', 'Purchase order deleted successfully.');
             } else {
+                $referrer = request()->headers->get('referer');
+                if ($referrer) {
+                    return redirect($referrer)->with('error', 'Purchase order not deleted successfully.');
+                }
                 return redirect()->route('storeowner.ordering.report')
-                    ->with('error', 'Purchase order not found or could not be deleted');
+                    ->with('error', 'Purchase order not deleted successfully.');
             }
         } catch (\Exception $e) {
+            $referrer = request()->headers->get('referer');
+            if ($referrer) {
+                return redirect($referrer)->with('error', 'Error deleting purchase order: ' . $e->getMessage());
+            }
             return redirect()->route('storeowner.ordering.report')
                 ->with('error', 'Error deleting purchase order: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Display all invoices for a supplier.
+     */
+    public function supplierAllInvoices($supplierid): View|RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $storeid = $this->getStoreId();
+        
+        try {
+            $supplierid = base64_decode($supplierid);
+        } catch (\Exception $e) {
+            return redirect()->route('storeowner.ordering.report')
+                ->with('error', 'Invalid supplier ID');
+        }
+        
+        $reports = PurchaseOrder::with(['supplier', 'category'])
+            ->where('storeid', $storeid)
+            ->where('supplierid', $supplierid)
+            ->where('status', 'Yes')
+            ->orderBy('delivery_date', 'DESC')
+            ->get();
+        
+        // Calculate total_products for each report (matching CI's logic)
+        foreach ($reports as $report) {
+            $report->total_products = PurchasedProduct::where('purchase_orders_id', $report->purchase_orders_id)
+                ->count();
+        }
+        
+        return view('storeowner.ordering.supplier_all_invoices', compact('reports'));
+    }
+
+    /**
+     * Display monthly invoices for a supplier.
+     */
+    public function supplierAllInvoicesMonthly($supplierid, $delivery_date): View|RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $storeid = $this->getStoreId();
+        
+        try {
+            $supplierid = base64_decode($supplierid);
+        } catch (\Exception $e) {
+            return redirect()->route('storeowner.ordering.report')
+                ->with('error', 'Invalid supplier ID');
+        }
+        
+        $reports = PurchaseOrder::with(['supplier', 'category'])
+            ->where('storeid', $storeid)
+            ->where('supplierid', $supplierid)
+            ->whereDate('delivery_date', $delivery_date)
+            ->where('status', 'Yes')
+            ->orderBy('delivery_date', 'DESC')
+            ->get();
+        
+        // Calculate total_products for each report (matching CI's logic)
+        foreach ($reports as $report) {
+            $report->total_products = PurchasedProduct::where('purchase_orders_id', $report->purchase_orders_id)
+                ->count();
+        }
+        
+        return view('storeowner.ordering.supplier_all_invoices_monthly', compact('reports', 'delivery_date'));
+    }
+
+    /**
+     * Display edit purchase order page.
+     */
+    public function edit($purchase_orders_id): View|RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $storeid = $this->getStoreId();
+        $user = auth('storeowner')->user();
+        $username = $user->username ?? '';
+        
+        // Handle POST (update)
+        if (request()->isMethod('post') && request()->has('submit')) {
+            $validated = request()->validate([
+                'purchase_orders_id' => 'required|integer',
+                'invoicenumber' => 'nullable|string|max:255',
+                'creditnotedesc' => 'nullable|string|max:255',
+                'products_bought' => 'nullable|string|max:255',
+                'order_total_price' => 'nullable|numeric',
+                'order_total_tax' => 'nullable|numeric',
+                'order_total_inc_tax' => 'nullable|numeric',
+            ]);
+            
+            $deliverydocketstatus = request()->has('deliverydocketstatus') ? 'Yes' : 'No';
+            $invoicestatus = request()->has('invoicestatus') ? 'Yes' : 'No';
+            $creditnote = request()->has('creditnote') ? 'Yes' : 'No';
+            
+            $purchaseOrder = PurchaseOrder::where('purchase_orders_id', $validated['purchase_orders_id'])
+                ->where('storeid', $storeid)
+                ->first();
+            
+            if ($purchaseOrder) {
+                $purchaseOrder->update([
+                    'total_amount' => $validated['order_total_price'] ?? $purchaseOrder->total_amount,
+                    'total_tax' => $validated['order_total_tax'] ?? $purchaseOrder->total_tax,
+                    'amount_inc_tax' => $validated['order_total_inc_tax'] ?? $purchaseOrder->amount_inc_tax,
+                    'invoicenumber' => $validated['invoicenumber'] ?? $purchaseOrder->invoicenumber,
+                    'deliverydocketstatus' => $deliverydocketstatus,
+                    'status' => 'No', // Reset to waiting approval after edit
+                    'invoicestatus' => $invoicestatus,
+                    'creditnote' => $creditnote,
+                    'creditnotedesc' => $validated['creditnotedesc'] ?? $purchaseOrder->creditnotedesc,
+                    'products_bought' => $validated['products_bought'] ?? $purchaseOrder->products_bought,
+                    'editdate' => now(),
+                    'editip' => request()->ip(),
+                    'editby' => $username,
+                ]);
+                
+                // Delete existing purchased products
+                PurchasedProduct::where('purchase_orders_id', $validated['purchase_orders_id'])
+                    ->where('storeid', $storeid)
+                    ->delete();
+                
+                // Add new purchased products if provided
+                if (request()->has('productid') && is_array(request('productid'))) {
+                    $productids = request('productid');
+                    $quantities = request('quantity', []);
+                    $product_prices = request('product_price', []);
+                    $taxids = request('taxid', []);
+                    $product_totals = request('product_total', []);
+                    $departmentids = request('departmentid', []);
+                    $supplierids = request('supplierid', []);
+                    $shipmentids = request('shipmentid', []);
+                    $purchasemeasuresids = request('purchasemeasuresid', []);
+                    
+                    foreach ($productids as $i => $productid) {
+                        if ($productid && isset($quantities[$i]) && $quantities[$i] > 0) {
+                            PurchasedProduct::create([
+                                'purchase_orders_id' => $validated['purchase_orders_id'],
+                                'storeid' => $storeid,
+                                'departmentid' => $departmentids[$i] ?? null,
+                                'supplierid' => $supplierids[$i] ?? null,
+                                'shipmentid' => $shipmentids[$i] ?? null,
+                                'productid' => $productid,
+                                'quantity' => $quantities[$i],
+                                'product_price' => $product_prices[$i] ?? 0,
+                                'taxid' => $taxids[$i] ?? null,
+                                'totalamount' => $product_totals[$i] ?? 0,
+                                'purchasemeasuresid' => $purchasemeasuresids[$i] ?? null,
+                                'insertdate' => now(),
+                                'insertip' => request()->ip(),
+                                'insertby' => 0,
+                                'editdate' => now(),
+                                'editip' => request()->ip(),
+                                'editby' => $username,
+                            ]);
+                        }
+                    }
+                }
+                
+                return redirect()->route('storeowner.ordering.edit', $purchase_orders_id)
+                    ->with('success', 'Purchase Order Updated Successfully.');
+            }
+            
+            return redirect()->route('storeowner.ordering.edit', $purchase_orders_id)
+                ->with('error', 'Something went wrong please try again.');
+        }
+        
+        // GET request - display edit form
+        $purchaseOrder = PurchaseOrder::with(['supplier', 'category', 'store'])
+            ->where('purchase_orders_id', $purchase_orders_id)
+            ->where('storeid', $storeid)
+            ->first();
+        
+        if (!$purchaseOrder) {
+            return redirect()->route('storeowner.ordering.report')
+                ->with('error', 'Purchase order not found');
+        }
+        
+        // Get purchased products for this order
+        $purchasedProducts = PurchasedProduct::with(['product.taxSetting', 'product.purchaseMeasure', 'taxSetting', 'department', 'supplier'])
+            ->where('purchase_orders_id', $purchase_orders_id)
+            ->get();
+        
+        // Get store products for the supplier (for adding new products)
+        $storeProducts = StoreProduct::with(['taxSetting', 'purchaseMeasure'])
+            ->where('supplierid', $purchaseOrder->supplierid)
+            ->where('product_status', 'Enable')
+            ->orderBy('product_name', 'ASC')
+            ->get();
+        
+        // Get suppliers and departments
+        $storeSuppliers = StoreSupplier::where('storeid', $storeid)
+            ->where('status', 'Enable')
+            ->where('purchase_supplier', 'Yes')
+            ->orderBy('supplier_name', 'ASC')
+            ->get();
+        
+        $departments = Department::where(function($query) use ($storeid) {
+            $query->where('storeid', $storeid)
+                  ->orWhere('storeid', 0);
+        })
+        ->where('status', 'Enable')
+        ->get();
+        
+        return view('storeowner.ordering.edit', compact(
+            'purchaseOrder', 
+            'purchasedProducts', 
+            'storeProducts', 
+            'storeSuppliers', 
+            'departments'
+        ));
     }
 }
 
