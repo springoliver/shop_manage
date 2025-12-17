@@ -132,8 +132,6 @@ Route::name('storeowner.')->group(function () {
         Route::get('roster/dept/{departmentid}', [StoreOwnerRosterController::class, 'indexDept'])->name('roster.index-dept');
         Route::get('roster/create/{employeeid}', [StoreOwnerRosterController::class, 'create'])->name('roster.create');
         Route::post('roster', [StoreOwnerRosterController::class, 'store'])->name('roster.store');
-        Route::get('roster/{employeeid}/edit', [StoreOwnerRosterController::class, 'edit'])->name('roster.edit');
-        Route::put('roster/{employeeid}', [StoreOwnerRosterController::class, 'update'])->name('roster.update');
         Route::delete('roster/{employeeid}', [StoreOwnerRosterController::class, 'destroy'])->name('roster.destroy');
         Route::get('roster/{employeeid}/view', [StoreOwnerRosterController::class, 'view'])->name('roster.view');
 

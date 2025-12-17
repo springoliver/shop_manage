@@ -394,27 +394,41 @@ class ClockTimeService
             $rosterData = $this->getRosterHour($val->employeeid, $val->weekid, $val->day);
             
             if (!empty($rosterData) && $rosterData['start_time'] !== '00:00') {
-                $rosterStartTime = $rosterData['start_time'] . ':00';
-                $rosterEndTime = $rosterData['end_time'] . ':00';
+                $rosterStartTime = $rosterData['start_time'];
+                $rosterEndTime = $rosterData['end_time'];
             } else {
                 $rosterStartTime = "0";
                 $rosterEndTime = "0";
             }
 
+            // Use CI's startTime method logic (not roster intersection for weekclocktime)
+            // CI's startTime calculates from start_time (max of roster_start or clockin) to clockout
             $total = $this->calculateStartTime($val, $rosterData);
             
             $employee = StoreEmployee::find($val->employeeid);
             if ($employee && $employee->paid_break === 'No') {
                 $totalBreakout = ($employee->break_every_hrs * $total) * $employee->break_min;
+            } else {
+                $totalBreakout = 0;
             }
 
             $totalFinal = ($total * 60) - $totalBreakout;
             $total = number_format($totalFinal / 60, 2);
 
-            $val->roster_start_time = $rosterStartTime;
-            $val->roster_end_time = $rosterEndTime;
+            // Format roster times for display (matching CI's date('H:i:s', strtotime(...)))
+            if ($rosterStartTime !== "0") {
+                $val->roster_start_time = date('H:i:s', strtotime($rosterStartTime));
+            } else {
+                $val->roster_start_time = "0";
+            }
+            if ($rosterEndTime !== "0") {
+                $val->roster_end_time = date('H:i:s', strtotime($rosterEndTime));
+            } else {
+                $val->roster_end_time = "0";
+            }
+            
             $val->total = (float)$total;
-            $val->totalBreakout = $totalBreakout;
+            $val->totalBreakout = (int)$totalBreakout;
             $totalPayrolHr += (float)$total;
         }
 
@@ -445,7 +459,7 @@ class ClockTimeService
         foreach ($clockDetails as $key => $val) {
             $rosterData = $this->getRosterHour($val->employeeid, $val->weekid, $val->day);
             
-            if (!empty($rosterData) && isset($rosterData['start_time']) && $rosterData['start_time'] !== '00:00') {
+            if (!empty($rosterData) && $rosterData['start_time'] !== '00:00') {
                 $rosterStartTime = $rosterData['start_time'];
                 $rosterEndTime = $rosterData['end_time'];
             } else {
@@ -453,22 +467,33 @@ class ClockTimeService
                 $rosterEndTime = "0";
             }
 
+            // Use CI's startTime method logic (matching weekclocktime calculation)
             $total = $this->calculateStartTime($val, $rosterData);
             
             // Reset totalBreakout for each entry
             $totalBreakout = 0;
             
             $employee = StoreEmployee::find($val->employeeid);
-            if ($employee && $employee->paid_break === 'No' && $total > 0 && $employee->break_every_hrs > 0 && $employee->break_min > 0) {
+            if ($employee && $employee->paid_break === 'No') {
                 // Match CI calculation exactly: (break_every_hrs * total) * break_min
                 $totalBreakout = ($employee->break_every_hrs * $total) * $employee->break_min;
             }
 
             $totalFinal = ($total * 60) - $totalBreakout;
-            $total = $totalFinal > 0 ? number_format($totalFinal / 60, 2) : 0;
+            $total = number_format($totalFinal / 60, 2);
 
-            $val->roster_start_time = $rosterStartTime;
-            $val->roster_end_time = $rosterEndTime;
+            // Format roster times for display (matching CI's date('H:i:s', strtotime(...)))
+            if ($rosterStartTime !== "0") {
+                $val->roster_start_time = date('H:i:s', strtotime($rosterStartTime));
+            } else {
+                $val->roster_start_time = "0";
+            }
+            if ($rosterEndTime !== "0") {
+                $val->roster_end_time = date('H:i:s', strtotime($rosterEndTime));
+            } else {
+                $val->roster_end_time = "0";
+            }
+            
             $val->total = (float)$total;
             $val->totalBreakout = (int)$totalBreakout;
             $totalPayrolHr += (float)$total;
@@ -485,35 +510,42 @@ class ClockTimeService
      */
     protected function calculateStartTime($data, $rosterData)
     {
-        if (!empty($rosterData) && $rosterData['start_time'] !== '00:00') {
-            $rosterStartTime = $rosterData['start_time'] . ':00';
+        // Match CI's startTime method exactly (lines 726-751)
+        if (!empty($rosterData)) {
+            // CI uses: date('H:i:s', strtotime($roster_data[0]['start_time']))
+            $rosterStartTime = date('H:i:s', strtotime($rosterData['start_time']));
         } else {
             $rosterStartTime = "0";
         }
 
         $startTime = "";
-        if (intval($rosterStartTime) == 0 || $rosterStartTime === "0") {
+        // CI uses: if (intval($roster_start_time)==0)
+        if (intval($rosterStartTime) == 0) {
             $startTime = $data->clockin;
         } else {
-            $clockinDate = Carbon::parse($data->clockin)->format('Y-m-d');
-            $startTime = $clockinDate . ' ' . $rosterStartTime;
-            $rosterDate = Carbon::parse($startTime);
-            $clockDate = Carbon::parse($data->clockin);
-            
-            if ($clockDate->gt($rosterDate)) {
+            // CI uses: $rStartTime = explode(" ",$data['clockin']); $start_time = $rStartTime[0]." ".$roster_data[0]['start_time'];
+            $clockinParts = explode(" ", $data->clockin);
+            $startTime = $clockinParts[0] . " " . $rosterData['start_time'];
+
+            // CI uses: if ($clockDate>$rosterDate) { $start_time = $data['clockin']; }
+            $rosterDate = strtotime($startTime);
+            $clockDate = strtotime($data->clockin);
+            if ($clockDate > $rosterDate) {
                 $startTime = $data->clockin;
             }
         }
 
-        // Calculate hours between two datetime strings
+        // Calculate hours using CI's get_time_add method
+        // CI uses: $total = $this->get_time_add($start_time, $data['clockout']);
+        // get_time_add returns: $seconds / (60 * 60) (hours)
         if (!$startTime || !$data->clockout) {
             return 0;
         }
 
-        $start = Carbon::parse($startTime);
-        $end = Carbon::parse($data->clockout);
-        
-        return round($end->diffInMinutes($start) / 60, 2);
+        $d0 = new \DateTime($startTime);
+        $d1 = new \DateTime($data->clockout);
+        $seconds = $d1->getTimestamp() - $d0->getTimestamp();
+        return $seconds / (60 * 60); // Return hours (matching CI's get_time_add)
     }
 
     /**

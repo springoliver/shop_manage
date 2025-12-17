@@ -244,98 +244,6 @@ class RosterController extends Controller
     }
 
     /**
-     * Show the form for editing a base roster.
-     */
-    public function edit(string $employeeid): View|\Illuminate\Http\RedirectResponse
-    {
-        $moduleCheck = $this->checkModuleAccess();
-        if ($moduleCheck) {
-            return $moduleCheck;
-        }
-        
-        $employeeid = base64_decode($employeeid);
-        $employee = StoreEmployee::findOrFail($employeeid);
-        
-        $storeid = $this->getStoreId();
-        
-        // Get existing roster
-        $rosters = Roster::where('employeeid', $employeeid)
-            ->where('storeid', $storeid)
-            ->get()
-            ->keyBy('day');
-        
-        return view('storeowner.roster.edit', compact('employee', 'rosters'));
-    }
-
-    /**
-     * Update the base roster.
-     */
-    public function update(Request $request, string $employeeid): RedirectResponse
-    {
-        $moduleCheck = $this->checkModuleAccess();
-        if ($moduleCheck) {
-            return $moduleCheck;
-        }
-        
-        $employeeid = base64_decode($employeeid);
-        $employee = StoreEmployee::findOrFail($employeeid);
-        
-        $storeid = $this->getStoreId();
-        
-        $validated = $request->validate([
-            'Sunday_start' => 'required',
-            'Sunday_end' => 'required',
-            'Monday_start' => 'required',
-            'Monday_end' => 'required',
-            'Tuesday_start' => 'required',
-            'Tuesday_end' => 'required',
-            'Wednesday_start' => 'required',
-            'Wednesday_end' => 'required',
-            'Thursday_start' => 'required',
-            'Thursday_end' => 'required',
-            'Friday_start' => 'required',
-            'Friday_end' => 'required',
-            'Saturday_start' => 'required',
-            'Saturday_end' => 'required',
-        ]);
-        
-        $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
-        foreach ($days as $day) {
-            $startKey = $day . '_start';
-            $endKey = $day . '_end';
-            $startTime = $validated[$startKey];
-            $endTime = $validated[$endKey];
-            
-            $workStatus = ($startTime === 'off' || $endTime === 'off') ? 'off' : 'on';
-            
-            Roster::updateOrCreate(
-                [
-                    'storeid' => $storeid,
-                    'employeeid' => $employee->employeeid,
-                    'day' => $day,
-                ],
-                [
-                    'departmentid' => $employee->departmentid,
-                    'start_time' => $workStatus === 'off' ? '00:00:00' : date('H:i:s', strtotime($startTime)),
-                    'end_time' => $workStatus === 'off' ? '00:00:00' : date('H:i:s', strtotime($endTime)),
-                    'shift' => 'day',
-                    'work_status' => $workStatus,
-                    'editdatetime' => now(),
-                    'editip' => $request->ip(),
-                    'status' => 'current',
-                    'break_every_hrs' => $employee->break_every_hrs ?? 0,
-                    'break_min' => $employee->break_min ?? 0,
-                    'paid_break' => $employee->paid_break ?? 'Yes',
-                ]
-            );
-        }
-        
-        return redirect()->route('storeowner.roster.index')
-            ->with('success', 'Roster updated successfully.');
-    }
-
-    /**
      * Remove the base roster.
      */
     public function destroy(string $employeeid): RedirectResponse
@@ -696,12 +604,17 @@ class RosterController extends Controller
             return $moduleCheck;
         }
         
-        // Accept both date formats (yyyy-mm-dd or dd-mm-yyyy) like CI
-        $dateInput = $request->input('dateofbirth');
+        // Check for POST data first (from search form), then session (for redirects after save), then query param (for redirects), then default to today
+        $dateInput = $request->input('dateofbirth') ?? session('roster_search_date') ?? $request->query('dateofbirth');
         
-        // If no date provided (GET request), show the search form with today's date
+        // Clear session date after using it
+        if (session('roster_search_date')) {
+            session()->forget('roster_search_date');
+        }
+        
+        // If no date provided (GET request or no POST data), show the search form with today's date
         if (!$dateInput) {
-            $dateInput = date('d-m-Y');
+            $dateInput = date('Y-m-d'); // Use current date format for HTML5 input
             $week = null;
             $weeknumber = null;
             $year = date('Y');
@@ -712,13 +625,11 @@ class RosterController extends Controller
             return view('storeowner.roster.rosterforweek', compact('week', 'rostersByEmployee', 'weeknumber', 'year', 'totalHours', 'dateInput'));
         }
         
-        // Parse the date - handle both yyyy-mm-dd (HTML5) and dd-mm-yyyy (CI) formats
         try {
             // Try yyyy-mm-dd format first (HTML5 date input)
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateInput)) {
                 $date = new \DateTime($dateInput);
             } else {
-                // Try dd-mm-yyyy format (CI format)
                 $date = \DateTime::createFromFormat('d-m-Y', $dateInput);
                 if (!$date) {
                     throw new \Exception('Invalid date format');
@@ -741,7 +652,7 @@ class RosterController extends Controller
             $yearModel = Year::create(['year' => $year]);
         }
         
-        // Get week by weeknumber and yearid (like CI's get_weekid)
+        // Get week by weeknumber and yearid
         $weekResult = Week::where('weeknumber', $weeknumber)
             ->where('yearid', $yearModel->yearid)
             ->first();
@@ -755,7 +666,7 @@ class RosterController extends Controller
         $totalHours = [];
         
         if ($weekid) {
-            // Get week rosters for this week (like CI's get_edit_weekroster)
+            // Get week rosters for this week
             $weekRosters = WeekRoster::where('storeid', $storeid)
                 ->where('weekid', $weekid)
                 ->with(['employee' => function($q) {
@@ -780,7 +691,7 @@ class RosterController extends Controller
             // Group by employee
             $rostersByEmployee = $weekRosters->groupBy('employeeid');
             
-            // Calculate total hours per employee (like CI's get_totalhours)
+            // Calculate total hours per employee
             foreach ($employees as $employee) {
                 $empId = $employee->employeeid;
                 $employeeRosters = $weekRosters->where('employeeid', $empId);
@@ -920,7 +831,21 @@ class RosterController extends Controller
             ]);
         }
         
-        return redirect()->back()
+        // Get the date from request to preserve the week that was being edited
+        // Client wants to stay on the same week after editing
+        $dateInput = $request->input('dateofbirth');
+        
+        if ($dateInput) {
+            // Store in session to pass to the redirect (since redirect uses GET, we'll use session)
+            session()->flash('roster_search_date', $dateInput);
+            
+            // Redirect to searchweekroster with the date parameter to stay on the same week
+            return redirect()->route('storeowner.roster.searchweekroster', ['dateofbirth' => $dateInput])
+                ->with('success', 'Roster Edited Successfully.');
+        }
+        
+        // Fallback to current week if no date provided
+        return redirect()->route('storeowner.roster.searchweekroster')
             ->with('success', 'Roster Edited Successfully.');
     }
 

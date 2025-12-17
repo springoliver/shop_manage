@@ -182,12 +182,48 @@
     
     @push('scripts')
     <script>
-        $(document).ready(function() {
-            $('#email_button').hide();
-            $('#phone_button').hide();
-        });
+        // Wait for jQuery to be available
+        (function() {
+            var retries = 0;
+            var maxRetries = 50; // 5 seconds max wait (50 * 100ms)
+            
+            function initScripts() {
+                // Check if jQuery is available
+                var $ = window.jQuery || window.$;
+                
+                if (typeof $ === 'undefined') {
+                    retries++;
+                    if (retries < maxRetries) {
+                        setTimeout(initScripts, 100);
+                        return;
+                    } else {
+                        console.error('jQuery failed to load after ' + maxRetries + ' retries');
+                        return;
+                    }
+                }
+                
+                // jQuery is now available, proceed with initialization
+                $(document).ready(function() {
+                    $('#email_button').hide();
+                    $('#phone_button').hide();
+                });
+            }
+            
+            // Start initialization when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initScripts);
+            } else {
+                initScripts();
+            }
+        })();
         
         function deletePO(purchase_orders_id) {
+            var $ = window.jQuery || window.$;
+            if (typeof $ === 'undefined') {
+                alert('jQuery is not loaded. Please refresh the page.');
+                return false;
+            }
+            
             if(confirm("Do you really want to remove this Purchase Order?")) {
                 $.ajax({
                     url: '{{ route("storeowner.ajax.remove-purchase-order") }}',
@@ -212,6 +248,12 @@
         }
         
         function selectOrder(purchase_orders_id, supplier_name, e) {
+            var $ = window.jQuery || window.$;
+            if (typeof $ === 'undefined') {
+                alert('jQuery is not loaded. Please refresh the page.');
+                return;
+            }
+            
             $('#po_delete_button').attr('onclick', 'deletePO(' + purchase_orders_id + ')');
             
             $('#table-order tfoot #purchase_orders_id').val(purchase_orders_id);
@@ -229,40 +271,55 @@
                     $('#table-order tbody').html('<tr><td colspan="6" class="px-4 py-3 text-center text-sm text-gray-500">Loading...</td></tr>');
                 },
                 success: function(res) {
+                    console.log('AJAX Success Response:', res); // Debug log
+                    
+                    // Check if response is valid
+                    if (!res || !res.purchase_order) {
+                        console.error('Invalid response format:', res);
+                        $('#table-order tbody').html('<tr><td colspan="6" class="px-4 py-3 text-center text-sm text-red-500">Invalid response from server</td></tr>');
+                        return;
+                    }
+                    
                     var htm = '';
-                    if( res.data.length == 0 ) {
+                    if( !res.data || res.data.length == 0 ) {
                         htm += '<tr><td colspan="6" class="px-4 py-3 text-center text-sm text-gray-500">No product found for this order</td></tr>';
                     } else {
                         for( var i = 0; i < res.data.length; i++ ) {
                             htm += '<tr id="product_row_' + res.data[i].productid + '">';
                             htm += '<td class="px-4 py-3 text-sm text-gray-900">';
-                            htm += res.data[i].product_name;
+                            htm += res.data[i].product_name || 'N/A';
                             htm += '</td>';
                             htm += '<td class="px-4 py-3 text-sm text-gray-900">';
                             htm += res.data[i].purchasemeasure || '';
                             htm += '</td>';
                             htm += '<td class="px-4 py-3 text-sm text-gray-900">';
-                            htm += '€ ' + res.data[i].product_price;
+                            htm += '€ ' + (res.data[i].product_price || 0);
                             htm += '</td>';
                             htm += '<td class="px-4 py-3 text-center text-sm text-gray-900">';
-                            htm += 'x ' + res.data[i].quantity;
+                            htm += 'x ' + (res.data[i].quantity || 0);
                             htm += '</td>';
                             htm += '<td class="px-4 py-3 text-center text-sm text-gray-900">';
-                            var ttx = Number(res.data[i].totalamount) * (Number(res.data[i].tax_amount || 0) / 100);
+                            var ttx = Number(res.data[i].totalamount || 0) * (Number(res.data[i].tax_amount || 0) / 100);
                             htm += 'Tax: ' + (res.data[i].tax_name || 'N/A') + ' = €' + ttx.toFixed(2);
                             htm += '</td>';
                             htm += '<td class="px-4 py-3 text-right text-sm text-gray-900">';
-                            htm += '€ ' + res.data[i].totalamount;
+                            htm += '€ ' + (res.data[i].totalamount || 0);
                             htm += '</td>';
                             htm += '</tr>';
                         }
                     }
                     
+                    // Update table body - clear first then set HTML
+                    $('#table-order tbody').empty();
+                    $('#table-order tbody').html(htm);
+                    
+                    // Update header information
                     $('#supplier_name').text(supplier_name);
                     var orderDate = res.purchase_order.insertdate ? new Date(res.purchase_order.insertdate).toLocaleDateString() : '';
                     $('#order_date').text("Order Date: " + orderDate);
                     $('#purchase_orders_id').text("Purchase Order ID: " + res.purchase_order.purchase_orders_id);
                     
+                    // Update totals
                     $('#table-order tfoot #total_price_text').text(res.purchase_order.total_amount || 0);
                     $('#table-order tfoot #total_tax_text').text(res.purchase_order.total_tax || 0);
                     $('#table-order tfoot #total_inc_tax_text').text(res.purchase_order.amount_inc_tax || 0);
@@ -271,6 +328,7 @@
                     $('#table-order tfoot #total_tax').val(res.purchase_order.total_tax || 0);
                     $('#table-order tfoot #total_inc_tax').val(res.purchase_order.amount_inc_tax || 0);
                     
+                    // Update email button
                     if( res.purchase_order.supplier_email && res.purchase_order.supplier_email != '' ) {
                         $('#email_button').attr('onclick', 'emailOrderSheet(' + res.purchase_order.purchase_orders_id + ')');
                         $('#email_button').html("<i class='fa fa-envelope'></i> Order by email");
@@ -279,6 +337,7 @@
                         $('#email_button').hide();
                     }
                     
+                    // Update phone button
                     if( res.purchase_order.supplier_phone && res.purchase_order.supplier_phone != '' ) {
                         $('#phone_button').attr('href', 'tel:' + res.purchase_order.supplier_phone);
                         $('#phone_button').html("<i class='fa fa-phone'></i> " + res.purchase_order.supplier_phone);
@@ -287,15 +346,28 @@
                         $('#phone_button').hide();
                     }
                     
+                    // Enable submit button
                     $('#submit_button').prop('disabled', false);
                 },
-                error: function() {
-                    $('#table-order tbody').html('<tr><td colspan="6" class="px-4 py-3 text-center text-sm text-red-500">Error loading order details</td></tr>');
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error Details:', {
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText,
+                        statusCode: xhr.status
+                    });
+                    $('#table-order tbody').html('<tr><td colspan="6" class="px-4 py-3 text-center text-sm text-red-500">Error loading order details. Status: ' + xhr.status + '. Please check console for details.</td></tr>');
                 }
             });
         }
         
         function emailOrderSheet(purchase_orders_id) {
+            var $ = window.jQuery || window.$;
+            if (typeof $ === 'undefined') {
+                alert('jQuery is not loaded. Please refresh the page.');
+                return;
+            }
+            
             $.ajax({
                 url: '{{ route("storeowner.ajax.send-order-sheet") }}',
                 method: 'GET',

@@ -232,7 +232,7 @@
                                 <td class="px-4 py-3 text-sm text-green-600 font-medium">{{ $totalHours }} Hours</td>
                                 <td class="px-4 py-3 text-sm">
                                     <div class="flex space-x-2">
-                                        <a href="{{ route('storeowner.roster.edit', base64_encode($employee->employeeid)) }}" class="text-blue-600 hover:text-blue-800" title="Edit">
+                                        <a href="javascript:void(0);" onclick="getRosterData({{ $employee->employeeid }})" class="text-blue-600 hover:text-blue-800" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <form action="{{ route('storeowner.roster.destroy', base64_encode($employee->employeeid)) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this roster?');">
@@ -254,6 +254,26 @@
                             </tr>
                         @endforelse
                     </tbody>
+                    @if($weekroster->count() > 0)
+                        <tfoot>
+                            <tr class="bg-gray-50">
+                                <td colspan="8" class="px-4 py-3 text-right text-sm font-medium text-gray-700">Total:</td>
+                                <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                                    @php
+                                        $grandTotal = 0;
+                                        foreach($weekroster as $r) {
+                                            if ($r->start_time != '00:00:00') {
+                                                $diff = (strtotime($r->end_time) - strtotime($r->start_time)) / 3600;
+                                                $grandTotal += ceil($diff);
+                                            }
+                                        }
+                                    @endphp
+                                    {{ $grandTotal }} Hours
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    @endif
                 </table>
             </div>
             
@@ -608,6 +628,92 @@
             }
         }
 
+        function getRosterData(employeeid) {
+            const formData = new FormData();
+            formData.append('employeeid', employeeid);
+            formData.append('modelname', 'index_dept');
+            formData.append('_token', '{{ csrf_token() }}');
+
+            fetch("{{ route('storeowner.ajax.get-roster-template-data') }}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Remove any existing modal first
+                const existingModal = document.getElementById('editRosterTemplateModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Create a container div and append modal HTML to body
+                const tempContainer = document.createElement('div');
+                tempContainer.innerHTML = data;
+                document.body.appendChild(tempContainer);
+                
+                // Get the modal element
+                const modalElement = document.getElementById('editRosterTemplateModal');
+                if (modalElement) {
+                    // Show modal by removing hidden class
+                    modalElement.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    
+                    // Re-run the script to attach event listeners
+                    const scripts = tempContainer.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        if (script.src) {
+                            newScript.src = script.src;
+                        } else {
+                            newScript.textContent = script.textContent;
+                        }
+                        document.body.appendChild(newScript);
+                    });
+
+                    // Handle form submission
+                    const form = document.getElementById('editRosterTemplateForm');
+                    if (form) {
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const submitForm = new FormData(form);
+                            fetch(form.action, {
+                                method: 'POST',
+                                body: submitForm,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'text/html'
+                                }
+                            })
+                            .then(response => {
+                                if (response.redirected) {
+                                    window.location.href = response.url;
+                                } else {
+                                    return response.text();
+                                }
+                            })
+                            .then(data => {
+                                if (data) {
+                                    window.location.reload();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('An error occurred while saving the roster.');
+                            });
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while loading the roster data.');
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             initializePagination();
 
@@ -633,5 +739,8 @@
         });
     </script>
     @endpush
+
+    <!-- Edit Roster Modal Container -->
+    <!-- Modal will be dynamically inserted here by getRosterData() function -->
 </x-storeowner-app-layout>
 

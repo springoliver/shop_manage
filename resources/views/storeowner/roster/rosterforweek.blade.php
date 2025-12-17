@@ -173,6 +173,23 @@
 
     @push('scripts')
     <script>
+        // Auto-submit search form after successful save to refresh table (matching CI behavior)
+        // CI redirects back to the same page which refreshes the table
+        @if(session('success'))
+            document.addEventListener('DOMContentLoaded', function() {
+                // If we have a success message and the date input exists, auto-submit the search form
+                const dateInput = document.getElementById('dateofbirth');
+                const searchForm = document.getElementById('weekRosterSearchForm');
+                
+                if (dateInput && searchForm && dateInput.value) {
+                    // Small delay to ensure page is fully loaded
+                    setTimeout(function() {
+                        searchForm.submit();
+                    }, 100);
+                }
+            });
+        @endif
+        
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         
         function compare(temp) {
@@ -271,10 +288,12 @@
         function getEditEmployeeRoster(employeeid) {
             const weeknumber = {{ $weeknumber ?? 0 }};
             const weekid = {{ $weekid ?? 0 }};
+            const dateInput = document.getElementById('dateofbirth') ? document.getElementById('dateofbirth').value : '{{ $dateInput ?? date('Y-m-d') }}';
             const formData = new FormData();
             formData.append('employeeid', employeeid);
             formData.append('weeknumber', weeknumber);
             formData.append('weekid', weekid);
+            formData.append('dateInput', dateInput);
             formData.append('_token', '{{ csrf_token() }}');
             
             fetch("{{ route('storeowner.ajax.get-edit-employee-roster') }}", {
@@ -302,11 +321,29 @@
                 // Create a container div and append modal HTML to body
                 const tempContainer = document.createElement('div');
                 tempContainer.innerHTML = data;
+                
+                // Extract and execute scripts from the loaded HTML
+                // Scripts in innerHTML don't execute automatically
+                const scripts = tempContainer.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                    } else {
+                        newScript.textContent = oldScript.textContent;
+                    }
+                    document.body.appendChild(newScript);
+                    oldScript.remove();
+                });
+                
                 document.body.appendChild(tempContainer);
                 
                 // Get the modal element
                 const modalElement = document.getElementById('editRosterModal');
                 if (modalElement) {
+                    // Remove aria-hidden to fix accessibility warning
+                    modalElement.removeAttribute('aria-hidden');
+                    
                     // Show modal by adding classes
                     modalElement.classList.remove('hidden');
                     modalElement.classList.add('show');
@@ -321,11 +358,19 @@
                     // Prevent body scroll
                     document.body.style.overflow = 'hidden';
                     
+                    // Ensure checkWorkingHourModel function is available globally
+                    // The function should be defined in the modal script, but ensure it's accessible
+                    if (typeof window.checkWorkingHourModel === 'undefined') {
+                        console.warn('checkWorkingHourModel function not found, modal script may not have loaded');
+                    }
+                    
                     // Close modal handlers
                     const closeModal = function() {
                         modalElement.classList.remove('show');
                         modalElement.classList.add('hidden');
                         modalElement.style.display = 'none';
+                        // Restore aria-hidden when closing
+                        modalElement.setAttribute('aria-hidden', 'true');
                         if (backdrop && backdrop.parentNode) {
                             backdrop.remove();
                         }

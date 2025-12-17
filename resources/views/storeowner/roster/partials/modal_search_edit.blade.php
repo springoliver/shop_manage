@@ -1,4 +1,4 @@
-<div class="fixed inset-0 z-50 overflow-y-auto hidden" id="editRosterModal" role="dialog" aria-labelledby="editRosterModalLabel" aria-hidden="true">
+<div class="fixed inset-0 z-50 overflow-y-auto hidden" id="editRosterModal" role="dialog" aria-labelledby="editRosterModalLabel">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
@@ -17,6 +17,9 @@
                     <input type="hidden" name="roster_day_hrs" id="roster_day_hrs" value="{{ $employee->roster_day_hrs ?? 0 }}" />
                     @if(isset($weekid))
                         <input type="hidden" name="hdnweekid" id="hdnweekid" value="{{ $weekid }}"/>
+                    @endif
+                    @if(isset($dateInput))
+                        <input type="hidden" name="dateofbirth" id="dateofbirth_modal" value="{{ $dateInput }}"/>
                     @endif
                     
                     <div class="mb-4">
@@ -99,19 +102,44 @@
                     </button>
                 </div>
             </form>
+            
+            <script>
+            // Auto-submit the search form after successful save to refresh the table (matching CI behavior)
+            // This ensures the table is refreshed with updated data after saving
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.querySelector('#editRosterModal form');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        // Let the form submit normally
+                        // After redirect, the page will reload with the date parameter
+                    });
+                }
+            });
+            </script>
         </div>
     </div>
 </div>
 
 <script>
-function checkWorkingHourModel(obj) {
-    const empid = document.getElementById('employeeid').value;
+// Define function globally so it's accessible from inline onchange handlers
+window.checkWorkingHourModel = function(obj) {
+    const empid = document.getElementById('employeeid');
+    if (!empid) {
+        console.error('Employee ID element not found');
+        return false;
+    }
+    
     const rosterWeekHrs = parseInt(document.getElementById('roster_week_hrs').value) || 0;
     const rosterDayHrs = parseInt(document.getElementById('roster_day_hrs').value) || 0;
     
     const dayName = obj.id.replace('_start1', '').replace('_end1', '');
     const startSelect = document.getElementById(dayName + '_start1');
     const endSelect = document.getElementById(dayName + '_end1');
+    
+    if (!startSelect || !endSelect) {
+        console.error('Start or end select not found for day:', dayName);
+        return false;
+    }
     
     if (startSelect.value !== 'off' && endSelect.value !== 'off') {
         const startTime = startSelect.value.replace(':', '.');
@@ -139,12 +167,16 @@ function checkWorkingHourModel(obj) {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     let totalWeekHours = 0;
     days.forEach(day => {
-        const start = document.getElementById(day + '_start1').value;
-        const end = document.getElementById(day + '_end1').value;
-        if (start !== 'off' && end !== 'off') {
-            const startTime = new Date('2000-01-01 ' + start + ':00').getTime();
-            const endTime = new Date('2000-01-01 ' + end + ':00').getTime();
-            totalWeekHours += (endTime - startTime) / (1000 * 60 * 60);
+        const startEl = document.getElementById(day + '_start1');
+        const endEl = document.getElementById(day + '_end1');
+        if (startEl && endEl) {
+            const start = startEl.value;
+            const end = endEl.value;
+            if (start !== 'off' && end !== 'off') {
+                const startTime = new Date('2000-01-01 ' + start + ':00').getTime();
+                const endTime = new Date('2000-01-01 ' + end + ':00').getTime();
+                totalWeekHours += (endTime - startTime) / (1000 * 60 * 60);
+            }
         }
     });
     
@@ -154,36 +186,19 @@ function checkWorkingHourModel(obj) {
         return false;
     }
     
-    // Sync start/end changes
-    if (startSelect.value === 'off') {
+    // Sync start/end changes - if one is set to "off", the other should also be "off"
+    // Only sync if the current value is "off" (don't interfere with selection)
+    if (obj.id.includes('_start1') && obj.value === 'off') {
+        // User selected "off" in start dropdown
         endSelect.value = 'off';
-    }
-    if (endSelect.value === 'off') {
+    } else if (obj.id.includes('_end1') && obj.value === 'off') {
+        // User selected "off" in end dropdown
         startSelect.value = 'off';
     }
-}
+    
+    return true;
+};
 
-// Sync start/end time changes on blur for modal
-const daysModal = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-daysModal.forEach(day => {
-    const startSelect = document.getElementById(day + '_start1');
-    const endSelect = document.getElementById(day + '_end1');
-    
-    if (startSelect) {
-        startSelect.addEventListener('blur', function() {
-            if (this.value === 'off') {
-                endSelect.value = 'off';
-            }
-        });
-    }
-    
-    if (endSelect) {
-        endSelect.addEventListener('blur', function() {
-            if (this.value === 'off') {
-                startSelect.value = 'off';
-            }
-        });
-    }
-});
+// Initialize modal after it's loaded - no additional sync needed as checkWorkingHourModel handles it
 </script>
 

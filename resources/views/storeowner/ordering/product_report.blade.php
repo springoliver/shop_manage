@@ -128,7 +128,7 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($productReports as $productReport)
                                 <tr>
-                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $productReport->department->departmentname ?? 'N/A' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $productReport->department->department ?? 'N/A' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $productReport->supplier->supplier_name ?? 'N/A' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $productReport->product->product_name ?? 'N/A' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $productReport->insertdate ? $productReport->insertdate->format('Y-m-d') : '' }}</td>

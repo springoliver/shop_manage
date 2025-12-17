@@ -112,23 +112,231 @@
     @push('styles')
     <style>
         @media print {
-            .no-print { 
-                display: none !important; 
+            /* Hide sidebar and navigation - target all possible sidebar elements */
+            aside,
+            aside[class*="bg-gray"],
+            .sidebar,
+            nav,
+            [class*="sidebar"],
+            [class*="navigation"],
+            [id*="sidebar"],
+            [id*="navigation"],
+            .fixed,
+            .sticky,
+            /* Hide top header/navbar - more comprehensive */
+            header,
+            [role="banner"],
+            [class*="header"],
+            [id*="header"],
+            [class*="navbar"],
+            [id*="navbar"],
+            [class*="top"],
+            [id*="top"],
+            /* Hide x-header component and page header section */
+            x-header,
+            [x-data*="header"],
+            header.bg-white,
+            header.shadow,
+            /* Hide the page heading section */
+            header.bg-white.shadow,
+            div.max-w-7xl,
+            /* Hide breadcrumbs and search form */
+            .breadcrumb,
+            nav[aria-label="Breadcrumb"],
+            form,
+            /* Hide buttons */
+            button,
+            .btn,
+            .no-print {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
-            body { 
-                margin: 0; 
-                padding: 20px; 
+            
+            /* Set page margins - minimal margins, especially top */
+            @page {
+                margin: 1.0cm 1.5cm 1.5cm 1.5cm !important; /* Further reduced top margin to 0.2cm */
+                size: A4 landscape; /* Use landscape for wider tables */
             }
+            
+            /* Remove any top spacing from html and body */
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                height: auto !important;
+            }
+            
+            /* Adjust body and main content for print */
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                position: relative !important;
+            }
+            
+            /* Hide any layout wrapper that might add top space */
+            [class*="min-h-screen"],
+            [class*="flex"],
+            [class*="wrapper"],
+            [id*="app"],
+            [id*="root"] {
+                margin: 0 !important;
+                padding: 0 !important;
+                min-height: auto !important;
+            }
+            
+            /* Hide the main wrapper padding */
+            main.flex-1,
+            main[class*="p-"],
+            div[class*="p-6"],
+            div[class*="p-8"],
+            div.bg-white.p-6 {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            /* Ensure main content takes full width with minimal padding */
+            main,
+            .main-content,
+            [class*="content"],
+            [id*="content"],
+            [class*="container"],
+            [class*="container-fluid"],
+            [class*="mx-auto"] {
+                margin: 0 !important;
+                padding: 0 !important; /* Removed padding to reduce top space */
+                width: 100% !important;
+                max-width: 100% !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                margin-top: 0 !important; /* Explicitly set top margin to 0 */
+                box-sizing: border-box !important;
+            }
+            
+            /* Target the first visible element and remove its top margin */
+            body > *:first-child,
+            [class*="content"] > *:first-child,
+            main > *:first-child,
+            main > div:first-child {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+            
+            /* Remove space-y-6 spacing */
+            [class*="space-y"] {
+                margin-top: 0 !important;
+            }
+            
+            /* Remove top margin from title section */
+            .text-center,
+            [class*="text-center"] {
+                margin-top: 0 !important;
+                padding-top: 5px !important; /* Minimal top padding */
+            }
+            
+            /* Remove any flex layouts that might include sidebar */
+            [class*="flex"] {
+                display: block !important;
+            }
+            
+            /* Table container styling */
+            .overflow-x-auto,
+            [class*="overflow"],
+            div[class*="rounded"] {
+                overflow: visible !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+            }
+            
+            /* Table styling for print - fit to page */
             table {
                 border-collapse: collapse;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                table-layout: auto;
+                font-size: 11px; /* Slightly smaller font to fit more data */
+                box-sizing: border-box !important;
             }
+            
+            /* Ensure table fits within page */
+            thead, tbody, tfoot {
+                width: 100% !important;
+            }
+            
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            
+            /* Optimize cell padding and sizing */
             th, td {
                 border: 1px solid #ddd;
-                padding: 8px;
+                padding: 4px 6px !important; /* Reduced padding to fit more content */
+                text-align: left;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                box-sizing: border-box !important;
             }
+            
+            /* Employee name column - can be narrower */
+            th:first-child,
+            td:first-child {
+                width: auto;
+                min-width: 120px;
+                max-width: 150px;
+            }
+            
+            /* Day columns - equal width distribution */
+            th:not(:first-child),
+            td:not(:first-child) {
+                width: auto;
+                text-align: center;
+            }
+            
             th {
-                background-color: #f2f2f2;
+                background-color: #f2f2f2 !important;
                 font-weight: bold;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* Title styling - minimal top margin */
+            h1 {
+                margin: 0 0 8px 0 !important; /* Removed top margin */
+                padding: 0 !important;
+                font-size: 18px !important;
+            }
+            
+            /* Remove top margin from table wrapper */
+            .p-6,
+            [class*="p-"] {
+                padding-top: 5px !important; /* Minimal top padding */
+            }
+            
+            /* Remove margins from divs that might add top space */
+            div[class*="mb-"],
+            .mb-6 {
+                margin-bottom: 8px !important;
+                margin-top: 0 !important;
+            }
+            
+            /* Remove top margin from header div */
+            div.text-center {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+            
+            /* Remove any shadows or rounded corners for print */
+            [class*="shadow"],
+            [class*="rounded"] {
+                box-shadow: none !important;
+                border-radius: 0 !important;
             }
         }
     </style>

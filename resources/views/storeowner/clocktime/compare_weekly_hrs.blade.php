@@ -58,7 +58,7 @@
                            id="searchbox"
                            placeholder="Search hours..." 
                            class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm">
-                </div>
+                    </div>
                 
                 <div class="flex items-center gap-2">
                     <label class="text-sm text-gray-700">Show:</label>
@@ -75,33 +75,33 @@
             <!-- Table -->
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-6">
-                    <div class="overflow-x-auto">
+                <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200" id="hours-table">
-                            <thead class="bg-gray-50">
-                                <tr>
+                        <thead class="bg-gray-50">
+                            <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="week" style="cursor: pointer;">
                                         Week <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
-                                    </th>
+                                </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="employee" style="cursor: pointer;">
                                         Employee Name <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
-                                    </th>
+                                </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="hours" style="cursor: pointer;">
                                         Hours <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
-                                    </th>
+                                </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="month" style="cursor: pointer;">
                                         Month <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
-                                    </th>
+                                </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" data-sort="year" style="cursor: pointer;">
                                         Year <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
-                                    </th>
+                                </th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Action
-                                    </th>
-                                </tr>
-                            </thead>
+                                    Action
+                                </th>
+                            </tr>
+                        </thead>
                             <tbody class="bg-white divide-y divide-gray-200" id="hoursTableBody">
-                                @if($empPayrollHrs->count() > 0)
-                                    @foreach($empPayrollHrs as $payroll)
+                            @if($empPayrollHrs->count() > 0)
+                                @foreach($empPayrollHrs as $payroll)
                                         @php
                                             $weekStartDate = \Carbon\Carbon::parse($payroll->week_start)->format('Y-m-d');
                                             $monthName = \Carbon\Carbon::parse($payroll->week_start)->format('F');
@@ -113,53 +113,53 @@
                                             data-hours="{{ (float)$payroll->hours_worked }}"
                                             data-month="{{ strtolower($monthName) }}"
                                             data-year="{{ $payroll->year }}">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <a href="{{ route('storeowner.clocktime.weekly-hrs-byweek', ['weekno' => base64_encode($payroll->weekno), 'year' => base64_encode($payroll->year)]) }}" class="text-blue-600 hover:text-blue-800">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <a href="{{ route('storeowner.clocktime.weekly-hrs-byweek', ['weekno' => base64_encode($payroll->weekno), 'year' => base64_encode($payroll->year)]) }}" class="text-blue-600 hover:text-blue-800">
                                                     {{ $weekStartDate }} - {{ $payroll->weekno }}
-                                                </a>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <a href="{{ route('storeowner.clocktime.weekly-hrs-byemployee', ['employeeid' => base64_encode($payroll->employeeid)]) }}" class="text-blue-600 hover:text-blue-800">
-                                                    {{ $payroll->firstname ?? 'N/A' }} {{ $payroll->lastname ?? '' }}
-                                                </a>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {{ number_format((float)$payroll->hours_worked, 2) }}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <a href="{{ route('storeowner.clocktime.monthly_hrs_allemployee') }}" class="text-blue-600 hover:text-blue-800">
+                                            </a>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <a href="{{ route('storeowner.clocktime.weekly-hrs-byemployee', ['employeeid' => base64_encode($payroll->employeeid)]) }}" class="text-blue-600 hover:text-blue-800">
+                                                {{ $payroll->firstname ?? 'N/A' }} {{ $payroll->lastname ?? '' }}
+                                            </a>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {{ number_format((float)$payroll->hours_worked, 2) }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <a href="{{ route('storeowner.clocktime.monthly_hrs_allemployee') }}" class="text-blue-600 hover:text-blue-800">
                                                     {{ $monthName }}
-                                                </a>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <a href="{{ route('storeowner.clocktime.yearly-hrs-byemployee', ['employeeid' => base64_encode($payroll->employeeid)]) }}" class="text-blue-600 hover:text-blue-800">
-                                                    {{ $payroll->year }}
-                                                </a>
-                                            </td>
+                                            </a>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <a href="{{ route('storeowner.clocktime.yearly-hrs-byemployee', ['employeeid' => base64_encode($payroll->employeeid)]) }}" class="text-blue-600 hover:text-blue-800">
+                                                {{ $payroll->year }}
+                                            </a>
+                                        </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
                                                 <a href="{{ route('storeowner.clocktime.edit-employee-hours', base64_encode($payroll->payroll_id ?? 0)) }}" 
                                                    class="inline-block text-blue-600 hover:text-blue-800 mr-3" 
                                                    title="Edit">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
+                                                <i class="fas fa-edit"></i>
+                                            </a>
                                                 <a href="#" 
                                                    class="inline-block text-red-600 hover:text-red-800 delete-payroll-hour" 
                                                    title="Delete"
                                                    data-href="{{ route('storeowner.employeepayroll.delete-payroll-hour', base64_encode($payroll->payroll_id ?? 0)) }}">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @else
-                                    <tr id="noHoursRow">
-                                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
-                                            No records found.
+                                                <i class="fas fa-trash"></i>
+                                            </a>
                                         </td>
                                     </tr>
-                                @endif
-                            </tbody>
-                        </table>
+                                @endforeach
+                            @else
+                                    <tr id="noHoursRow">
+                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        No records found.
+                                    </td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    </table>
                     </div>
                     
                     <!-- Client-side Pagination -->
@@ -241,7 +241,7 @@
             
             if (searchTerm) {
                 filteredRows = allRows.filter(row => {
-                    const text = row.textContent.toLowerCase();
+                const text = row.textContent.toLowerCase();
                     return text.includes(searchTerm);
                 });
             } else {
@@ -286,7 +286,7 @@
                     if (row.id !== 'noHoursRow') {
                         if (noHoursRow && noHoursRow.parentNode) {
                             tbody.insertBefore(row, noHoursRow);
-                        } else {
+                } else {
                             tbody.appendChild(row);
                         }
                     }

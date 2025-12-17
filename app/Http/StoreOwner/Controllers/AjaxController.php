@@ -68,66 +68,78 @@ class AjaxController extends Controller
      */
     public function getPurchaseOrderDetail(Request $request)
     {
-        $purchaseOrderId = $request->get('purchase_orders_id');
-        
-        if (!$purchaseOrderId) {
-            return Response::json(['purchase_order' => null, 'data' => []]);
+        try {
+            $purchaseOrderId = $request->get('purchase_orders_id');
+            
+            if (!$purchaseOrderId) {
+                return Response::json(['purchase_order' => null, 'data' => []], 400);
+            }
+            
+            $storeid = $this->getStoreId();
+            
+            // Get purchase order with supplier and store info
+            $purchaseOrder = PurchaseOrder::with(['supplier', 'store'])
+                ->where('purchase_orders_id', $purchaseOrderId)
+                ->where('storeid', $storeid)
+                ->first();
+            
+            if (!$purchaseOrder) {
+                return Response::json(['purchase_order' => null, 'data' => []], 404);
+            }
+            
+            // Get purchased products with related data
+            $purchasedProducts = DB::table('stoma_purchasedproducts as pp')
+                ->select(
+                    'pp.productid',
+                    'pp.quantity',
+                    'pp.product_price',
+                    'pp.totalamount',
+                    'pp.taxid',
+                    'pp.purchasemeasuresid',
+                    'sp.product_name',
+                    'pm.purchasemeasure',
+                    'ts.tax_name',
+                    'ts.tax_amount',
+                    'pp.supplierid',
+                    'pp.departmentid',
+                    'pp.shipmentid'
+                )
+                ->leftJoin('stoma_store_products as sp', 'pp.productid', '=', 'sp.productid')
+                ->leftJoin('stoma_purchasemeasures as pm', 'pp.purchasemeasuresid', '=', 'pm.purchasemeasuresid')
+                ->leftJoin('stoma_tax_settings as ts', 'sp.taxid', '=', 'ts.taxid')
+                ->where('pp.purchase_orders_id', $purchaseOrderId)
+                ->get();
+            
+            // Format purchase order data
+            $orderData = [
+                'purchase_orders_id' => $purchaseOrder->purchase_orders_id,
+                'supplier_name' => $purchaseOrder->supplier->supplier_name ?? '',
+                'supplier_email' => $purchaseOrder->supplier->supplier_email ?? '',
+                'supplier_phone' => $purchaseOrder->supplier->supplier_phone ?? '',
+                'supplier_acc_number' => $purchaseOrder->supplier->supplier_acc_number ?? '',
+                'total_amount' => $purchaseOrder->total_amount ?? 0,
+                'total_tax' => $purchaseOrder->total_tax ?? 0,
+                'amount_inc_tax' => $purchaseOrder->amount_inc_tax ?? 0,
+                'insertdate' => $purchaseOrder->insertdate ?? '',
+                'store_name' => $purchaseOrder->store->storename ?? '',
+                'store_email' => $purchaseOrder->store->store_email ?? '',
+            ];
+            
+            return Response::json([
+                'purchase_order' => $orderData,
+                'data' => $purchasedProducts->toArray() // Convert collection to array for JSON response
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in getPurchaseOrderDetail: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+            
+            return Response::json([
+                'error' => 'An error occurred while fetching purchase order details',
+                'message' => $e->getMessage()
+            ], 500);
         }
-        
-        $storeid = $this->getStoreId();
-        
-        // Get purchase order with supplier and store info
-        $purchaseOrder = PurchaseOrder::with(['supplier', 'store'])
-            ->where('purchase_orders_id', $purchaseOrderId)
-            ->where('storeid', $storeid)
-            ->first();
-        
-        if (!$purchaseOrder) {
-            return Response::json(['purchase_order' => null, 'data' => []]);
-        }
-        
-        // Get purchased products with related data
-        $purchasedProducts = DB::table('stoma_purchasedproducts as pp')
-            ->select(
-                'pp.productid',
-                'pp.quantity',
-                'pp.product_price',
-                'pp.totalamount',
-                'pp.taxid',
-                'pp.purchasemeasuresid',
-                'sp.product_name',
-                'pm.purchasemeasure',
-                'ts.tax_name',
-                'ts.tax_amount',
-                'pp.supplierid',
-                'pp.departmentid',
-                'pp.shipmentid'
-            )
-            ->leftJoin('stoma_store_products as sp', 'pp.productid', '=', 'sp.productid')
-            ->leftJoin('stoma_purchasemeasures as pm', 'pp.purchasemeasuresid', '=', 'pm.purchasemeasuresid')
-            ->leftJoin('stoma_tax_settings as ts', 'sp.taxid', '=', 'ts.taxid')
-            ->where('pp.purchase_orders_id', $purchaseOrderId)
-            ->get();
-        
-        // Format purchase order data
-        $orderData = [
-            'purchase_orders_id' => $purchaseOrder->purchase_orders_id,
-            'supplier_name' => $purchaseOrder->supplier->supplier_name ?? '',
-            'supplier_email' => $purchaseOrder->supplier->supplier_email ?? '',
-            'supplier_phone' => $purchaseOrder->supplier->supplier_phone ?? '',
-            'supplier_acc_number' => $purchaseOrder->supplier->supplier_acc_number ?? '',
-            'total_amount' => $purchaseOrder->total_amount ?? 0,
-            'total_tax' => $purchaseOrder->total_tax ?? 0,
-            'amount_inc_tax' => $purchaseOrder->amount_inc_tax ?? 0,
-            'insertdate' => $purchaseOrder->insertdate ?? '',
-            'store_name' => $purchaseOrder->store->storename ?? '',
-            'store_email' => $purchaseOrder->store->store_email ?? '',
-        ];
-        
-        return Response::json([
-            'purchase_order' => $orderData,
-            'data' => $purchasedProducts
-        ]);
     }
     
     /**
@@ -345,7 +357,10 @@ class AjaxController extends Controller
             return Response::json(['error' => 'Employee not found']);
         }
         
-        return view('storeowner.roster.partials.modal_search_edit', compact('rosters', 'employee', 'weekid', 'modelname'))->render();
+        // Get dateInput from request to pass to modal (for redirect after save)
+        $dateInput = $request->input('dateInput');
+        
+        return view('storeowner.roster.partials.modal_search_edit', compact('rosters', 'employee', 'weekid', 'modelname', 'dateInput'))->render();
     }
 
     /**
