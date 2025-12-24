@@ -8,6 +8,7 @@ use App\Models\StoreEmployee;
 use App\Models\WeekRoster;
 use App\Models\Week;
 use App\Models\Year;
+use App\Models\BreakEvent;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -405,12 +406,38 @@ class ClockTimeService
             // CI's startTime calculates from start_time (max of roster_start or clockin) to clockout
             $total = $this->calculateStartTime($val, $rosterData);
             
+            // Calculate actual break time from BreakEvent records
+            $actualBreakMinutes = 0;
             $employee = StoreEmployee::find($val->employeeid);
+            
             if ($employee && $employee->paid_break === 'No') {
-                $totalBreakout = ($employee->break_every_hrs * $total) * $employee->break_min;
-            } else {
-                $totalBreakout = 0;
+                // Get all completed break events for this login time record (eltid)
+                $breakEvents = BreakEvent::where('eltid', $val->eltid)
+                    ->where('status', 'completed')
+                    ->whereNotNull('break_duration')
+                    ->where('break_duration', '>', 0)
+                    ->get();
+                
+                // Sum up all break durations (in minutes)
+                $actualBreakMinutes = (int)$breakEvents->sum('break_duration');
+                
+                // Fallback: If no break events but employee has break settings, calculate estimated breaks
+                // But only if this seems reasonable (avoid negative values)
+                if ($actualBreakMinutes == 0 && $employee->break_every_hrs > 0 && $employee->break_min > 0 && $total > 0) {
+                    // Calculate estimated breaks: every X hours, Y minutes break
+                    // Example: every 4 hours, 15 min break, for 8 hours = 2 breaks = 30 min
+                    $estimatedBreaks = floor($total / $employee->break_every_hrs);
+                    $actualBreakMinutes = $estimatedBreaks * $employee->break_min;
+                }
             }
+            
+            // Ensure break minutes don't exceed total minutes (prevent negative totals)
+            $totalMinutes = $total * 60;
+            if ($actualBreakMinutes > $totalMinutes) {
+                $actualBreakMinutes = $totalMinutes;
+            }
+            
+            $totalBreakout = (int)$actualBreakMinutes;
 
             $totalFinal = ($total * 60) - $totalBreakout;
             $total = number_format($totalFinal / 60, 2);
@@ -470,14 +497,38 @@ class ClockTimeService
             // Use CI's startTime method logic (matching weekclocktime calculation)
             $total = $this->calculateStartTime($val, $rosterData);
             
-            // Reset totalBreakout for each entry
-            $totalBreakout = 0;
-            
+            // Calculate actual break time from BreakEvent records
+            $actualBreakMinutes = 0;
             $employee = StoreEmployee::find($val->employeeid);
+            
             if ($employee && $employee->paid_break === 'No') {
-                // Match CI calculation exactly: (break_every_hrs * total) * break_min
-                $totalBreakout = ($employee->break_every_hrs * $total) * $employee->break_min;
+                // Get all completed break events for this login time record (eltid)
+                $breakEvents = BreakEvent::where('eltid', $val->eltid)
+                    ->where('status', 'completed')
+                    ->whereNotNull('break_duration')
+                    ->where('break_duration', '>', 0)
+                    ->get();
+                
+                // Sum up all break durations (in minutes)
+                $actualBreakMinutes = (int)$breakEvents->sum('break_duration');
+                
+                // Fallback: If no break events but employee has break settings, calculate estimated breaks
+                // But only if this seems reasonable (avoid negative values)
+                if ($actualBreakMinutes == 0 && $employee->break_every_hrs > 0 && $employee->break_min > 0 && $total > 0) {
+                    // Calculate estimated breaks: every X hours, Y minutes break
+                    // Example: every 4 hours, 15 min break, for 8 hours = 2 breaks = 30 min
+                    $estimatedBreaks = floor($total / $employee->break_every_hrs);
+                    $actualBreakMinutes = $estimatedBreaks * $employee->break_min;
+                }
             }
+            
+            // Ensure break minutes don't exceed total minutes (prevent negative totals)
+            $totalMinutes = $total * 60;
+            if ($actualBreakMinutes > $totalMinutes) {
+                $actualBreakMinutes = $totalMinutes;
+            }
+            
+            $totalBreakout = (int)$actualBreakMinutes;
 
             $totalFinal = ($total * 60) - $totalBreakout;
             $total = number_format($totalFinal / 60, 2);

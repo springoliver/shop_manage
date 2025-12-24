@@ -11,6 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Exclude webservice API routes from CSRF protection (for Android app)
+        $middleware->validateCsrfTokens(except: [
+            'ws/webservice/*',
+        ]);
+        
         $middleware->alias([
             'auth.storeowner' => \App\Http\Middleware\RedirectIfNotStoreOwner::class,
             'auth.admin' => \App\Http\Middleware\RedirectIfNotAdmin::class,

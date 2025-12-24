@@ -208,6 +208,8 @@ Route::name('storeowner.')->group(function () {
         
         // Chart Data AJAX routes for dashboard
         Route::post('clocktime/get_hours_chart_weekly', [StoreOwnerClockTimeController::class, 'getHoursChartWeekly'])->name('clocktime.get_hours_chart_weekly');
+        Route::get('clocktime/settings', [StoreOwnerClockTimeController::class, 'settings'])->name('clocktime.settings');
+        Route::post('clocktime/settings', [StoreOwnerClockTimeController::class, 'updateSettings'])->name('clocktime.update-settings');
 
         // Document routes
         Route::get('document', [StoreOwnerDocumentController::class, 'index'])->name('document.index');

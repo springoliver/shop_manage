@@ -77,6 +77,7 @@ class Store extends Model
         'editip',
         'editby',
         'status',
+        'enable_break_events',
     ];
 
     /**

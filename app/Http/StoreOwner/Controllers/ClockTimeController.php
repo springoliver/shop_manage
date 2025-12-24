@@ -5,6 +5,7 @@ namespace App\Http\StoreOwner\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\StoreEmployee;
 use App\Models\EmpLoginTime;
+use App\Models\Store;
 use App\Services\StoreOwner\ModuleService;
 use App\Services\StoreOwner\ClockTimeService;
 use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
@@ -1271,6 +1272,59 @@ class ClockTimeController extends Controller
         
         return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
             ->with('error', 'Failed to update employee hours.');
+    }
+
+    /**
+     * Display clock time settings page.
+     */
+    public function settings(): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $storeid = $this->getStoreId();
+        $store = Store::find($storeid);
+        
+        if (!$store) {
+            return redirect()->route('storeowner.clocktime.index')
+                ->with('error', 'Store not found.');
+        }
+        
+        return view('storeowner.clocktime.settings', compact('store'));
+    }
+
+    /**
+     * Update clock time settings.
+     */
+    public function updateSettings(Request $request): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $storeid = $this->getStoreId();
+        $store = Store::find($storeid);
+        
+        if (!$store) {
+            return redirect()->route('storeowner.clocktime.settings')
+                ->with('error', 'Store not found.');
+        }
+        
+        $validated = $request->validate([
+            'enable_break_events' => 'required|in:Yes,No',
+        ]);
+        
+        $store->enable_break_events = $validated['enable_break_events'];
+        $store->editdate = Carbon::now();
+        $store->editip = $request->ip();
+        $store->editby = Auth::id();
+        $store->save();
+        
+        return redirect()->route('storeowner.clocktime.settings')
+            ->with('success', 'Clock time settings updated successfully.');
     }
 }
 

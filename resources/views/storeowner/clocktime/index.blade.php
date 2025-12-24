@@ -36,6 +36,15 @@
         </div>
     @endif
 
+    <!-- Settings Link -->
+    <div class="mb-4 flex justify-end">
+        <a href="{{ route('storeowner.clocktime.settings') }}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <i class="fas fa-cog mr-2"></i>
+            Settings
+        </a>
+    </div>
+
     <!-- Search Form -->
     <div class="mb-6 bg-white rounded-lg shadow p-6">
         <form action="{{ route('storeowner.clocktime.clockreport') }}" method="POST" class="flex flex-wrap items-end gap-4">
