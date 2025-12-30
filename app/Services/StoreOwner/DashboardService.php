@@ -137,12 +137,14 @@ class DashboardService
 
     /**
      * Get sales amount by date range
+     * CI logic: DATE(date) <= startdate AND DATE(date) >= enddate
      */
     public function getSalesAmountByDates(string $startDate, string $endDate): float
     {
         $result = DB::table('stoma_daily_report')
             ->where('storeid', $this->storeid)
-            ->whereBetween('date', [$endDate, $startDate])
+            ->whereRaw('DATE(date) <= ?', [$startDate])
+            ->whereRaw('DATE(date) >= ?', [$endDate])
             ->value(DB::raw('SUM(total_sell)'));
 
         return (float)($result ?? 0);
@@ -172,13 +174,16 @@ class DashboardService
     public function getDailyGiftByDate(string $date): float
     {
         // Check if table exists, return 0 if not
-        if (!Schema::hasTable('stoma_giftvoucher')) {
+        if (!Schema::hasTable('stoma_voucherdetails')) {
             return 0.0;
         }
         
-        // Gift voucher table may not have a date field - return 0 for now
-        // This can be updated when the gift voucher table structure is confirmed
-        return 0.0;
+        $result = DB::table('stoma_voucherdetails')
+            ->where('storeid', $this->storeid)
+            ->whereDate('insertdate', $date)
+            ->value(DB::raw('SUM(voucher_value)'));
+
+        return (float)($result ?? 0);
     }
 
     /**
@@ -188,8 +193,8 @@ class DashboardService
     {
         $result = DB::table('stoma_daily_report')
             ->where('storeid', $this->storeid)
-            ->whereDate('date', $date)
-            ->value(DB::raw('SUM(today_cash)'));
+            ->whereDate('insertdate', $date)
+            ->value(DB::raw('SUM(total_sell)'));
 
         return (float)($result ?? 0);
     }
@@ -256,23 +261,58 @@ class DashboardService
             ->select('d.clockin', 'd.clockout', 'd.employeeid', 'e.departmentid')
             ->get();
 
-        $totalMinutes = 0;
-        
-        foreach ($results as $row) {
-            if ($row->clockin && $row->clockout) {
-                $clockin = strtotime($row->clockin);
-                $clockout = strtotime($row->clockout);
-                $secondsDiff = $clockout - $clockin;
-                $minutes = ($secondsDiff / 60);
-                $totalMinutes += $minutes;
+        $depHrsArr = [
+            'list' => [],
+            'tMins' => 0,
+            'tHrsFloat' => 0.0,
+        ];
+
+        if ($results->isNotEmpty()) {
+            foreach ($results as $row) {
+                if ($row->clockin && $row->clockout) {
+                    $clockin = strtotime($row->clockin);
+                    $clockout = strtotime($row->clockout);
+                    $secondsDiff = $clockout - $clockin;
+                    
+                    // Calculate minutes
+                    list($hh, $mm) = explode(':', gmdate('H:i', $secondsDiff));
+                    $mins = ($hh * 60) + (int)$mm;
+                    
+                    $depHrsArr['list'][] = [
+                        'clockin' => $row->clockin,
+                        'clockout' => $row->clockout,
+                        'employeeid' => $row->employeeid,
+                        'departmentid' => $row->departmentid,
+                    ];
+                    
+                    $depHrsArr['tMins'] += $mins;
+                    
+                    // Format as string "HH.MM" (e.g., "02.30" for 2 hours 30 minutes)
+                    $totalHours = (int)($depHrsArr['tMins'] / 60);
+                    $remainingMins = $depHrsArr['tMins'] % 60;
+                    $depHrsArr['tHrsFloat'] = str_pad($totalHours, 2, '0', STR_PAD_LEFT) . '.' . str_pad($remainingMins, 2, '0', STR_PAD_LEFT);
+                }
             }
         }
 
-        $hours = floor($totalMinutes / 60);
-        $mins = $totalMinutes % 60;
-        $tHrsFloat = (float)($hours + ($mins / 60));
-
-        return ['tHrsFloat' => $tHrsFloat];
+        // Convert tHrsFloat string format "HH.MM" to float hours (e.g., "02.30" = 2.5 hours)
+        $tHrsFloatFloat = 0.0;
+        if (!empty($depHrsArr['tHrsFloat'])) {
+            $parts = explode('.', $depHrsArr['tHrsFloat']);
+            if (count($parts) == 2) {
+                $hours = (int)$parts[0];
+                $minutes = (int)$parts[1];
+                $tHrsFloatFloat = (float)($hours + ($minutes / 60));
+            } else {
+                $tHrsFloatFloat = (float)$depHrsArr['tHrsFloat'];
+            }
+        }
+        
+        return [
+            'list' => $depHrsArr['list'],
+            'tMins' => $depHrsArr['tMins'],
+            'tHrsFloat' => $tHrsFloatFloat, // Return as float for calculations (hours as decimal)
+        ];
     }
 
     /**
@@ -338,20 +378,21 @@ class DashboardService
     {
         $result = DB::table('stoma_daily_report')
             ->where('storeid', $this->storeid)
-            ->whereDate('date', $date)
+            ->whereDate('insertdate', $date)
             ->value(DB::raw('SUM(total_sell)'));
 
         return (float)($result ?? 0);
     }
 
     /**
-     * Get last year sale data for a specific date
+     * Get last year sale data for a date range
      */
     public function getLastYearSaleData(string $date, string $endDate): float
     {
         $result = DB::table('stoma_daily_report')
             ->where('storeid', $this->storeid)
-            ->whereDate('date', $date)
+            ->whereRaw('DATE(insertdate) >= ?', [$date])
+            ->whereRaw('DATE(insertdate) <= ?', [$endDate])
             ->value(DB::raw('SUM(total_sell)'));
 
         return (float)($result ?? 0);

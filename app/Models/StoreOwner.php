@@ -143,6 +143,17 @@ class StoreOwner extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\StoreOwner\ResetPasswordNotification($token));
+    }
+
+    /**
      * Get the stores owned by this store owner.
      */
     public function stores(): \Illuminate\Database\Eloquent\Relations\HasMany

@@ -77,6 +77,71 @@ class ClockTimeController extends Controller
     }
 
     /**
+     * Display currently clocked-in employees.
+     * CI method: clocked_in()
+     */
+    public function clockedIn(): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+        
+        $storeid = $this->getStoreId();
+        
+        $clockedOutDetails = $this->clockTimeService->getAllClockOutDetails($storeid);
+        $employees = StoreEmployee::where('storeid', $storeid)
+            ->where('status', '!=', 'Deactivate')
+            ->orderBy('firstname', 'ASC')
+            ->get();
+        
+        // Add roster data and calculate hours for each record
+        foreach ($clockedOutDetails as $detail) {
+            $rosterData = $this->clockTimeService->getRosterHour($detail->employeeid, $detail->weekid ?? null, $detail->day ?? null);
+            $detail->roster_start_time = $rosterData['start_time'] ?? '00:00';
+            $detail->roster_end_time = $rosterData['end_time'] ?? '00:00';
+            
+            // Calculate time difference if clockout exists
+            if ($detail->clockout && $detail->clockin) {
+                $clockin = Carbon::parse($detail->clockin);
+                $clockout = Carbon::parse($detail->clockout);
+                $detail->timediff = $clockin->diffInMinutes($clockout);
+            } else {
+                $detail->timediff = null;
+            }
+        }
+        
+        return view('storeowner.clocktime.clocked_in', compact('clockedOutDetails', 'employees'));
+    }
+
+    /**
+     * Manual clockout - clock out an employee manually.
+     * CI method: manual_clockout()
+     */
+    public function manualClockout(Request $request): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+
+        $validated = $request->validate([
+            'eltid' => 'required|integer',
+            'status' => 'required|string',
+        ]);
+
+        $result = $this->clockTimeService->manualClockout($validated['eltid']);
+
+        if ($result) {
+            return redirect()->route('storeowner.clocktime.clocked_in')
+                ->with('success', 'Employee clocked out successfully.');
+        } else {
+            return redirect()->route('storeowner.clocktime.clocked_in')
+                ->with('error', 'Something went wrong please try again.');
+        }
+    }
+
+    /**
      * Handle search/report request.
      */
     public function clockReport(Request $request): View|\Illuminate\Http\RedirectResponse

@@ -96,13 +96,13 @@ use Illuminate\Support\Facades\Route;
                 @endif
 
                 <!-- Clocked-in -->
-                @if(in_array('Clock in-out', $installedModuleNames) && Route::has('storeowner.clocktime.index'))
+                @if(in_array('Clock in-out', $installedModuleNames) && Route::has('storeowner.clocktime.clocked_in'))
                 <div class="bg-teal-600 rounded-lg shadow p-4 text-white relative overflow-hidden">
                     <div class="absolute top-2 right-2">
                         <i class="fas fa-clock text-3xl opacity-20"></i>
                     </div>
                     <div class="relative z-10">
-                        <a href="{{ route('storeowner.clocktime.index') }}" class="block">
+                        <a href="{{ route('storeowner.clocktime.clocked_in') }}" class="block">
                             <div class="text-sm font-semibold uppercase mb-1">Clocked-in</div>
                             <div class="text-3xl font-bold">{{ $clockInCount }}</div>
                         </a>

@@ -746,5 +746,72 @@ class ClockTimeService
             ->where('ep.payroll_id', $payrollId)
             ->first();
     }
+
+    /**
+     * Get all clocked out details (currently clocked-in employees).
+     * CI method: get_all_clockoutdetails()
+     * Returns employees with status='clockout' (meaning they are still clocked in)
+     */
+    public function getAllClockOutDetails(int $storeid)
+    {
+        // Since eltid is unique (primary key), we can use GROUP BY with all selected columns
+        // to satisfy MySQL strict mode requirements
+        return DB::table('stoma_emp_login_time as el')
+            ->select([
+                'el.eltid',
+                'el.employeeid',
+                'el.storeid',
+                'el.weekid',
+                'el.day',
+                'el.clockin',
+                'el.clockout',
+                'el.status',
+                'el.inRoster',
+                'el.insertdate',
+                'el.insertip',
+                'e.firstname',
+                'e.lastname',
+                'd.department',
+            ])
+            ->leftJoin('stoma_employee as e', 'e.employeeid', '=', 'el.employeeid')
+            ->leftJoin('stoma_store_department as d', 'd.departmentid', '=', 'e.departmentid')
+            ->where('el.status', 'clockout')
+            ->where('e.status', '!=', 'Deactivate')
+            ->where('el.storeid', $storeid)
+            ->groupBy([
+                'el.eltid',
+                'el.employeeid',
+                'el.storeid',
+                'el.weekid',
+                'el.day',
+                'el.clockin',
+                'el.clockout',
+                'el.status',
+                'el.inRoster',
+                'el.insertdate',
+                'el.insertip',
+                'e.firstname',
+                'e.lastname',
+                'd.department',
+            ])
+            ->orderBy('el.clockin', 'DESC')
+            ->get();
+    }
+
+    /**
+     * Manual clockout - update employee login time record to clock them out.
+     * Sets clockout time to current time and status to 'clockin' (completed)
+     */
+    public function manualClockout(int $eltid): bool
+    {
+        $result = DB::table('stoma_emp_login_time')
+            ->where('eltid', $eltid)
+            ->update([
+                'clockout' => Carbon::now()->format('Y-m-d H:i:s'),
+                'status' => 'clockin', // 'clockin' means completed (not clocked in anymore)
+            ]);
+
+        return $result > 0;
+    }
 }
 

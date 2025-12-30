@@ -175,6 +175,8 @@ Route::name('storeowner.')->group(function () {
 
         // Clock Time routes
         Route::get('clocktime', [StoreOwnerClockTimeController::class, 'index'])->name('clocktime.index');
+        Route::get('clocktime/clocked_in', [StoreOwnerClockTimeController::class, 'clockedIn'])->name('clocktime.clocked_in');
+        Route::post('clocktime/manual_clockout', [StoreOwnerClockTimeController::class, 'manualClockout'])->name('clocktime.manual-clockout');
         Route::post('clocktime/clockreport', [StoreOwnerClockTimeController::class, 'clockReport'])->name('clocktime.clockreport');
         Route::post('clocktime/exportpdf', [StoreOwnerClockTimeController::class, 'exportPdf'])->name('clocktime.exportpdf');
         Route::get('clocktime/employee_holidays', [StoreOwnerClockTimeController::class, 'employeeHolidays'])->name('clocktime.employee_holidays');

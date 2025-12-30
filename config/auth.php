@@ -69,7 +69,7 @@ return [
 
     'providers' => [
         'storeowners' => [
-            'driver' => 'eloquent',
+            'driver' => 'storeowner',
             'model' => App\Models\StoreOwner::class,
         ],
         'admins' => [
