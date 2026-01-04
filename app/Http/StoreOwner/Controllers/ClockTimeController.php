@@ -575,7 +575,8 @@ class ClockTimeController extends Controller
         $employeeid = base64_decode($employeeid);
         $date = Carbon::parse($date);
         $weekNumber = (int)$date->format('W');
-        $year = (int)$date->format('Y');
+        // Get ISO year (handles Week 1 starting in December - belongs to next year)
+        $year = $this->clockTimeService->getIsoYearFromDate($date);
 
         $weekDates = $this->clockTimeService->getStartAndEndDate($weekNumber, $year);
         $startDate = $weekDates['week_start'];
@@ -630,7 +631,8 @@ class ClockTimeController extends Controller
         
         $date = Carbon::parse($date);
         $weekNumber = (int)$date->format('W');
-        $year = (int)$date->format('Y');
+        // Get ISO year (handles Week 1 starting in December - belongs to next year)
+        $year = $this->clockTimeService->getIsoYearFromDate($date);
 
         $weekDates = $this->clockTimeService->getStartAndEndDate($weekNumber, $year);
         $startDate = $weekDates['week_start'];
@@ -1030,7 +1032,8 @@ class ClockTimeController extends Controller
         
         $date = Carbon::parse($date);
         $weekNumber = (int)$date->format('W');
-        $year = (int)$date->format('Y');
+        // Get ISO year (handles Week 1 starting in December - belongs to next year)
+        $year = $this->clockTimeService->getIsoYearFromDate($date);
 
         $weekDates = $this->clockTimeService->getStartAndEndDate($weekNumber, $year);
         $startDate = $weekDates['week_start'];
@@ -1082,7 +1085,8 @@ class ClockTimeController extends Controller
         
         $date = Carbon::parse($date);
         $weekNumber = (int)$date->format('W');
-        $year = (int)$date->format('Y');
+        // Get ISO year (handles Week 1 starting in December - belongs to next year)
+        $year = $this->clockTimeService->getIsoYearFromDate($date);
 
         $weekDates = $this->clockTimeService->getStartAndEndDate($weekNumber, $year);
         $startDate = $weekDates['week_start'];

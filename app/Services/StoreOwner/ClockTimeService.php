@@ -53,7 +53,7 @@ class ClockTimeService
      */
     public function getClockDetailsByDate($storeid, $date, $enddate = null, $employeeids = [])
     {
-        $query = EmpLoginTime::with(['employee', 'week'])
+        $query = EmpLoginTime::with(['employee', 'week.year'])
             ->where('storeid', $storeid)
             ->where('inRoster', 'Yes')
             ->whereHas('employee', function($q) {
@@ -338,6 +338,32 @@ class ClockTimeService
             ->orderBy('year', 'DESC')
             ->orderBy('month', 'DESC')
             ->get();
+    }
+
+    /**
+     * Get ISO year from a date.
+     * When Week 1 starts in December, it belongs to the next ISO year.
+     * This matches CI behavior where Week 1 of 2026 starts December 29, 2025.
+     */
+    public function getIsoYearFromDate($date): int
+    {
+        if ($date instanceof Carbon) {
+            $carbonDate = $date;
+        } else {
+            $carbonDate = Carbon::parse($date);
+        }
+        
+        $weekNumber = (int)$carbonDate->format('W');
+        $calendarYear = (int)$carbonDate->format('Y');
+        $month = (int)$carbonDate->format('m');
+        
+        // When Week 1 starts in December, it belongs to the next ISO year
+        // Example: December 29, 2025 is Week 1 of 2026 (ISO year)
+        if ($weekNumber == 1 && $month == 12) {
+            return $calendarYear + 1;
+        }
+        
+        return $calendarYear;
     }
 
     /**

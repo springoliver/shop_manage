@@ -296,10 +296,19 @@ class WebServiceController extends Controller
             $rosterType = $roster ? 'Yes' : 'No';
         }
 
-        // Parse date and get week number and year
+        // Parse date and get week number and ISO year
+        // When Week 1 starts in December, it belongs to the next ISO year
+        // Example: December 30, 2025 is Week 1 of 2026 (ISO year)
         $date = $clientDateTime;
         $weekNumber = (int)$date->format('W'); // Week number (1-53)
-        $year = (string)$date->format('Y'); // Year as string (matching ClockTimeService)
+        $calendarYear = (int)$date->format('Y');
+        $month = (int)$date->format('m');
+        
+        // Get ISO year: When Week 1 starts in December, it belongs to the next ISO year
+        $year = (string)$calendarYear;
+        if ($weekNumber == 1 && $month == 12) {
+            $year = (string)($calendarYear + 1);
+        }
 
         // Get or create year record (year is stored as string in database)
         $yearRecord = Year::firstOrCreate(

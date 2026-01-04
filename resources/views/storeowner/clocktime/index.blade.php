@@ -151,10 +151,10 @@
                                             'weekid' => base64_encode($detail->weekid),
                                             'date' => \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d')
                                         ]) }}" class="text-blue-600 hover:text-blue-800" title="Week">
-                                            {{ $detail->week->weeknumber ?? '' }}-{{ \Carbon\Carbon::parse($detail->clockin)->format('Y') }}
+                                            {{ $detail->week->weeknumber ?? '' }}-{{ $detail->week->year->year ?? (\Carbon\Carbon::parse($detail->clockin)->format('Y')) }}
                                         </a>
                                     @else
-                                        {{ $detail->week->weeknumber ?? '' }}-{{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y') : '' }}
+                                        {{ $detail->week->weeknumber ?? '' }}-{{ ($detail->week && $detail->week->year) ? $detail->week->year->year : ($detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y') : '') }}
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
