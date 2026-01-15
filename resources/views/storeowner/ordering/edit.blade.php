@@ -63,11 +63,11 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax Band</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Measure</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty.</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tax Band</th>
+                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Measure</th>
+                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qty.</th>
+                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -82,16 +82,16 @@
                                                     <input type="hidden" id="departmentid" name="departmentid" value="{{ $product->departmentid ?? 0 }}">
                                                     {{ $product->product_name }}
                                                 </td>
-                                                <td class="px-3 py-2 text-sm text-gray-900" title="{{ $product->product_price }}">
+                                                <td class="px-3 py-2 text-center text-sm text-gray-900" title="{{ $product->product_price }}">
                                                     <input type="hidden" id="product_price" name="product_price" value="{{ $product->product_price }}">
                                                     {{ number_format($product->product_price, 2) }}
                                                 </td>
-                                                <td class="px-3 py-2 text-sm text-gray-900" title="{{ $product->taxSetting->tax_name ?? '' }}">
+                                                <td class="px-3 py-2 text-center text-sm text-gray-900" title="{{ $product->taxSetting->tax_name ?? '' }}">
                                                     <input type="hidden" id="tax_amount" name="tax_amount" value="{{ $product->taxSetting->tax_amount ?? 0 }}">
                                                     <input type="hidden" id="taxid" name="taxid" value="{{ $product->taxid ?? 0 }}">
                                                     {{ $product->taxSetting->tax_name ?? '-' }}
                                                 </td>
-                                                <td class="px-3 py-2 text-sm text-gray-900" title="{{ $product->purchaseMeasure->purchasemeasure ?? '' }}">
+                                                <td class="px-3 py-2 text-center text-sm text-gray-900" title="{{ $product->purchaseMeasure->purchasemeasure ?? '' }}">
                                                     <input type="hidden" id="purchasemeasuresid" name="purchasemeasuresid" value="{{ $product->purchasemeasuresid ?? 0 }}">
                                                     {{ $product->purchaseMeasure->purchasemeasure ?? '-' }}
                                                 </td>
@@ -131,24 +131,28 @@
                                     <thead class="bg-gray-50">
                                         <tr>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty.</th>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax</th>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qty.</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tax</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        @if($purchasedProducts && count($purchasedProducts) > 0)
+                                        @if($purchasedProducts && $purchasedProducts->count() > 0)
                                             @foreach($purchasedProducts as $product)
+                                                @php
+                                                    $taxAmount = $product->tax_amount ?? 0;
+                                                    $taxTotal = ($product->product_price * $taxAmount / 100) * $product->quantity;
+                                                @endphp
                                                 <tr id="order_row_{{ $product->productid }}" class="order-row">
-                                                    <td class="px-3 py-2 text-sm text-gray-900" title="{{ $product->product->product_name ?? '' }}">
-                                                        <input type="hidden" name="product_name[]" value="{{ $product->product->product_name ?? '' }}">
+                                                    <td class="px-3 py-2 text-sm text-gray-900" title="{{ $product->product_name ?? 'N/A' }}">
+                                                        <input type="hidden" name="product_name[]" value="{{ $product->product_name ?? '' }}">
                                                         <input type="hidden" name="productid[]" value="{{ $product->productid }}">
-                                                        <input type="hidden" name="supplierid[]" value="{{ $product->supplierid }}">
+                                                        <input type="hidden" name="supplierid[]" value="{{ $product->supplierid ?? 0 }}">
                                                         <input type="hidden" name="shipmentid[]" value="{{ $product->shipmentid ?? 0 }}">
                                                         <input type="hidden" name="departmentid[]" value="{{ $product->departmentid ?? 0 }}">
-                                                        {{ $product->product->product_name ?? ($product->product_name ?? 'N/A') }}
+                                                        {{ $product->product_name ?? 'N/A' }}
                                                     </td>
                                                     <td class="px-3 py-2 text-center text-sm text-gray-900" title="{{ $product->product_price }}">
                                                         <input type="hidden" name="product_price[]" value="{{ $product->product_price }}">
@@ -159,10 +163,6 @@
                                                         {{ $product->quantity }}
                                                     </td>
                                                     <td class="px-3 py-2 text-center text-sm text-gray-900">
-                                                        @php
-                                                            $taxAmount = $product->taxSetting->tax_amount ?? ($product->product->taxSetting->tax_amount ?? 0);
-                                                            $taxTotal = ($product->product_price * $taxAmount / 100) * $product->quantity;
-                                                        @endphp
                                                         <input type="hidden" name="tax_amount[]" value="{{ $taxAmount }}">
                                                         <input type="hidden" name="taxid[]" value="{{ $product->taxid ?? 0 }}">
                                                         <input type="hidden" name="tax[]" value="{{ $taxTotal }}">
@@ -199,7 +199,17 @@
                                         </tr>
                                         <tr>
                                             <td colspan="3" class="px-3 py-2 text-sm text-gray-900">
-                                                Order Date: {{ $purchaseOrder->delivery_date ? $purchaseOrder->delivery_date->format('Y-m-d') : '' }}
+                                                @php
+                                                    $orderDate = $purchaseOrder->delivery_date ?? $purchaseOrder->insertdate ?? '';
+                                                    if ($orderDate) {
+                                                        if (is_string($orderDate)) {
+                                                            $orderDate = explode(' ', $orderDate)[0];
+                                                        } else {
+                                                            $orderDate = $orderDate->format('Y-m-d');
+                                                        }
+                                                    }
+                                                @endphp
+                                                Order Date: {{ $orderDate }}
                                             </td>
                                             <th colspan="3" class="px-3 py-2 text-sm text-gray-900 text-right">
                                                 Tax: <span id="total_tax_text">{{ number_format($purchaseOrder->total_tax ?? 0, 2) }}</span>

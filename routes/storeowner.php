@@ -190,6 +190,7 @@ Route::name('storeowner.')->group(function () {
         Route::get('clocktime/monthly_hrs_allemployee', [StoreOwnerClockTimeController::class, 'monthlyHrsAllEmployee'])->name('clocktime.monthly_hrs_allemployee');
         Route::get('clocktime/week-clock-time/{employeeid}/{date}', [StoreOwnerClockTimeController::class, 'weekClockTime'])->name('clocktime.week-clock-time');
         Route::get('clocktime/week-clock-time-allemp/{weekid}/{date}', [StoreOwnerClockTimeController::class, 'weekClockTimeAllEmp'])->name('clocktime.week-clock-time-allemp');
+        Route::get('clocktime/day-clock-time-allemp/{day}/{date}', [StoreOwnerClockTimeController::class, 'dayClockTimeAllEmp'])->name('clocktime.day-clock-time-allemp');
         Route::post('clocktime/edit-clock-inout', [StoreOwnerClockTimeController::class, 'editClockInOut'])->name('clocktime.edit-clock-inout');
         Route::post('clocktime/edit-emp-timecard', [StoreOwnerClockTimeController::class, 'editEmpTimecard'])->name('clocktime.edit-emp-timecard');
         Route::post('clocktime/add-shift', [StoreOwnerClockTimeController::class, 'addShift'])->name('clocktime.add-shift');

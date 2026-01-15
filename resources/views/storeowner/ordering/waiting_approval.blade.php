@@ -100,7 +100,10 @@
                                 <span id="order_date" class="ml-2"></span>
                                 <span id="purchase_orders_id" class="ml-2"></span>
                             </h3>
-                            <div class="flex space-x-2">
+                            <div class="flex space-x-2 items-center">
+                                <a href="javascript:;" id="po_edit_button" title="Edit PO" class="text-blue-600 hover:text-blue-800 mr-3 font-medium">
+                                    <i class="fas fa-pencil mr-1"></i> EDIT
+                                </a>
                                 <a href="javascript:;" id="po_delete_button" title="Delete PO" class="text-red-600 hover:text-red-800">
                                     <i class="fas fa-trash"></i>
                                 </a>
@@ -255,6 +258,7 @@
             }
             
             $('#po_delete_button').attr('onclick', 'deletePO(' + purchase_orders_id + ')');
+            $('#po_edit_button').attr('href', '{{ route("storeowner.ordering.edit", ":id") }}'.replace(':id', purchase_orders_id));
             
             $('#table-order tfoot #purchase_orders_id').val(purchase_orders_id);
             $('#table-supplier tr').css('background-color', '#FCFCFC');

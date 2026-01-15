@@ -583,6 +583,186 @@ class ClockTimeService
     }
 
     /**
+     * Get all employee hours by day (matching CI's get_allemployee_hrs_byday).
+     */
+    public function getAllEmployeeHrsByDay($storeid, $weekid, $day, $date)
+    {
+        $clockDetails = DB::table('stoma_emp_login_time as el')
+            ->join('stoma_employee as e', 'e.employeeid', '=', 'el.employeeid')
+            ->leftJoin('stoma_week_roster as wr', function($join) use ($storeid) {
+                $join->on('wr.storeid', '=', 'el.storeid')
+                     ->on('wr.employeeid', '=', 'el.employeeid');
+            })
+            ->where('el.storeid', $storeid)
+            ->where('el.inRoster', 'Yes')
+            ->whereDate('el.clockin', $date)
+            ->where('wr.day', $day)
+            ->where('wr.weekid', $weekid)
+            ->where('e.status', '!=', 'Deactivate')
+            ->select('el.eltid',
+                     'el.storeid',
+                     'el.employeeid',
+                     'el.clockin',
+                     'el.clockout',
+                     'el.weekid',
+                     'el.day',
+                     'el.status',
+                     'el.inRoster',
+                     'e.firstname', 
+                     'e.lastname',
+                     'wr.start_time',
+                     'wr.end_time',
+                     'e.break_every_hrs',
+                     'e.break_min',
+                     'e.paid_break')
+            ->groupBy('el.eltid',
+                     'el.storeid',
+                     'el.employeeid',
+                     'el.clockin',
+                     'el.clockout',
+                     'el.weekid',
+                     'el.day',
+                     'el.status',
+                     'el.inRoster',
+                     'e.firstname',
+                     'e.lastname',
+                     'wr.start_time',
+                     'wr.end_time',
+                     'e.break_every_hrs',
+                     'e.break_min',
+                     'e.paid_break')
+            ->orderBy('el.clockin', 'ASC')
+            ->get();
+
+        $totalPayrolHr = 0;
+        $processedDetails = [];
+
+        foreach ($clockDetails as $key => $val) {
+            // Convert stdClass to array for easier manipulation
+            $detail = (array)$val;
+            
+            // Get roster data for this employee/day
+            $rosterData = $this->getAllRosterHourByDay($detail['employeeid'], $detail['weekid'], $detail['day']);
+            
+            if (!empty($rosterData) && $rosterData['start_time'] !== '00:00') {
+                $rosterStartTime = $rosterData['start_time'];
+                $rosterEndTime = $rosterData['end_time'];
+            } else {
+                $rosterStartTime = "0";
+                $rosterEndTime = "0";
+            }
+
+            // Create a mock object for calculateStartTime
+            $mockData = (object)$detail;
+            $total = $this->calculateStartTimeForDay($mockData, $rosterData);
+            
+            // Calculate break time
+            $actualBreakMinutes = 0;
+            $employee = StoreEmployee::find($detail['employeeid']);
+            
+            if ($employee && $employee->paid_break === 'No') {
+                $breakEvents = BreakEvent::where('eltid', $detail['eltid'])
+                    ->where('status', 'completed')
+                    ->whereNotNull('break_duration')
+                    ->where('break_duration', '>', 0)
+                    ->get();
+                
+                $actualBreakMinutes = (int)$breakEvents->sum('break_duration');
+                
+                if ($actualBreakMinutes == 0 && $employee->break_every_hrs > 0 && $employee->break_min > 0 && $total > 0) {
+                    $estimatedBreaks = floor($total / $employee->break_every_hrs);
+                    $actualBreakMinutes = $estimatedBreaks * $employee->break_min;
+                }
+            }
+            
+            $totalMinutes = $total * 60;
+            if ($actualBreakMinutes > $totalMinutes) {
+                $actualBreakMinutes = $totalMinutes;
+            }
+            
+            $totalBreakout = (int)$actualBreakMinutes;
+            $totalFinal = ($total * 60) - $totalBreakout;
+            $total = number_format($totalFinal / 60, 2);
+
+            // Format roster times
+            if ($rosterStartTime !== "0") {
+                $detail['roster_start_time'] = date('H:i:s', strtotime($rosterStartTime));
+            } else {
+                $detail['roster_start_time'] = "0";
+            }
+            if ($rosterEndTime !== "0") {
+                $detail['roster_end_time'] = date('H:i:s', strtotime($rosterEndTime));
+            } else {
+                $detail['roster_end_time'] = "0";
+            }
+            
+            $detail['total'] = (float)$total;
+            $detail['totalBreakout'] = (int)$totalBreakout;
+            $detail['start_time'] = $rosterStartTime !== "0" ? date('H:i:s', strtotime($rosterStartTime)) : "0";
+            $detail['end_time'] = $rosterEndTime !== "0" ? date('H:i:s', strtotime($rosterEndTime)) : "0";
+            $totalPayrolHr += (float)$total;
+            
+            $processedDetails[] = (object)$detail;
+        }
+
+        return [
+            'clockdetails' => collect($processedDetails),
+            'totalPayrol' => $totalPayrolHr,
+        ];
+    }
+
+    /**
+     * Calculate start time for day view (similar to calculateStartTime but for day view).
+     */
+    protected function calculateStartTimeForDay($data, $rosterData)
+    {
+        if (!empty($rosterData)) {
+            $rosterStartTime = date('H:i:s', strtotime($rosterData['start_time']));
+        } else {
+            $rosterStartTime = "0";
+        }
+
+        $startTime = "";
+        if (intval($rosterStartTime) == 0) {
+            $startTime = $data->clockin;
+        } else {
+            $clockinParts = explode(" ", $data->clockin);
+            $startTime = $clockinParts[0] . " " . $rosterData['start_time'];
+
+            $rosterDate = strtotime($startTime);
+            $clockDate = strtotime($data->clockin);
+            if ($clockDate > $rosterDate) {
+                $startTime = $data->clockin;
+            }
+        }
+
+        $endTime = $data->clockout ?? $data->clockin;
+        $total = (strtotime($endTime) - strtotime($startTime)) / 3600;
+        
+        return max(0, $total);
+    }
+
+    /**
+     * Get all roster hour by day (matching CI's get_allroster_hour_byday).
+     */
+    protected function getAllRosterHourByDay($employeeid, $weekid, $day)
+    {
+        $roster = WeekRoster::where('employeeid', $employeeid)
+            ->where('weekid', $weekid)
+            ->where('day', $day)
+            ->first();
+
+        if ($roster) {
+            return [
+                'start_time' => $roster->start_time,
+                'end_time' => $roster->end_time,
+            ];
+        }
+
+        return [];
+    }
+
+    /**
      * Calculate start time for hours calculation.
      */
     protected function calculateStartTime($data, $rosterData)

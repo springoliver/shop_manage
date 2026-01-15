@@ -1,4 +1,4 @@
-@section('page_header', 'Week Clock-In-Out (All Employees)')
+@section('page_header', 'Day Clock-In-Out')
 
 <x-storeowner-app-layout>
     <!-- Breadcrumb -->
@@ -20,7 +20,7 @@
                 <li aria-current="page">
                     <div class="flex items-center">
                         <i class="fas fa-chevron-right text-gray-400"></i>
-                        <span class="ml-1 font-medium text-gray-700 md:ml-2">Week Clock-In-Out (All Employees)</span>
+                        <span class="ml-1 font-medium text-gray-700 md:ml-2">Day Clock-In-Out</span>
                     </div>
                 </li>
             </ol>
@@ -51,12 +51,8 @@
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-                <span class="font-semibold">Start Date:</span> 
-                <span>{{ \Carbon\Carbon::parse($startDate)->format('d-m-Y') }}</span>
-            </div>
-            <div>
-                <span class="font-semibold">End Date:</span> 
-                <span>{{ \Carbon\Carbon::parse($endDate)->format('d-m-Y') }}</span>
+                <span class="font-semibold">Day:</span> 
+                <span>{{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</span>
             </div>
             @if(count($clockDetails) > 0)
                 <div>
@@ -71,10 +67,8 @@
                     $firstDetail = $clockDetails->first();
                     $exportDate = \Carbon\Carbon::parse($firstDetail->clockin)->format('Y-m-d');
                 @endphp
-                <a href="{{ route('storeowner.clocktime.export-week-allemp', [
-                    'weekid' => $calculatedWeekid,
-                    'date' => $exportDate
-                ]) }}" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                <!-- Export route can be added later if needed -->
+                <a href="#" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
                     Export Clock Time
                 </a>
             @endif
@@ -92,16 +86,15 @@
                     <thead>
                         <tr class="bg-gray-50">
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee Name</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start<br/>(Roster)</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finish<br/>(Roster)</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start<br/>(Clock in-out App)</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finish<br/>(Clock in-out App)</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Break<br/>(Deducted)</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total<br/>(Numeric)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start(Roster)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finish(Roster)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start(Clock in-out App)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finish(Clock in-out App)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Break (Deducted)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (Numeric)</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Edit</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -115,65 +108,30 @@
                                         'employeeid' => base64_encode($detail->employeeid),
                                         'date' => \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d')
                                     ]) }}" class="text-blue-600 hover:text-blue-800">
-                                        {{ ucfirst($detail->employee->firstname ?? '') }} {{ ucfirst($detail->employee->lastname ?? '') }}
+                                        {{ ucfirst($detail->firstname ?? '') }} {{ ucfirst($detail->lastname ?? '') }}
                                     </a>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <a href="{{ route('storeowner.clocktime.day-clock-time-allemp', [
-                                        'day' => $detail->day,
-                                        'date' => \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d')
-                                    ]) }}" class="text-blue-600 hover:text-blue-800">
-                                        {{ $detail->day }}
-                                    </a>
+                                    {{ $detail->day ?? '' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $detail->roster_start_time ?? '00:00' }}
+                                    {{ $detail->start_time ?? '0' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $detail->roster_end_time ?? '00:00' }}
+                                    {{ $detail->end_time ?? '0' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    @if($detail->clockin)
-                                        @php
-                                            // Safely parse roster_start_time - handle '0', empty, or invalid values
-                                            $rosterStartTime = $detail->roster_start_time ?? null;
-                                            if (empty($rosterStartTime) || $rosterStartTime === '0' || $rosterStartTime === '00:00:00') {
-                                                $rosterStartTime = null;
-                                            }
-                                            
-                                            $clockIn = \Carbon\Carbon::parse($detail->clockin);
-                                            
-                                            // Only compare if we have a valid roster start time
-                                            $isLate = false;
-                                            if ($rosterStartTime) {
-                                                try {
-                                                    $rosterStart = \Carbon\Carbon::parse($rosterStartTime);
-                                                    // Compare only the time portion (not date)
-                                                    $rosterTime = $rosterStart->format('H:i:s');
-                                                    $clockInTime = $clockIn->format('H:i:s');
-                                                    $isLate = $rosterTime < $clockInTime;
-                                                } catch (\Exception $e) {
-                                                    // If parsing fails, don't mark as late
-                                                    $isLate = false;
-                                                }
-                                            }
-                                        @endphp
-                                        @if($isLate)
-                                            <span class="text-red-600">{{ $clockIn->format('Y-m-d H:i') }}</span>
-                                        @else
-                                            <span class="text-green-600">{{ $clockIn->format('Y-m-d H:i') }}</span>
-                                        @endif
-                                    @endif
+                                    {{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d H:i') : '' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    @if($detail->status != 'clockout')
+                                    @if(isset($detail->status) && $detail->status != 'clockout')
                                         {{ $detail->clockout ? \Carbon\Carbon::parse($detail->clockout)->format('Y-m-d H:i') : '' }}
                                     @else
                                         Still Working...
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    @if($detail->status != 'clockout' && isset($detail->totalBreakout))
+                                    @if(isset($detail->status) && $detail->status != 'clockout' && isset($detail->totalBreakout))
                                         @php
                                             $breakHours = floor($detail->totalBreakout / 60);
                                             $breakMinutes = $detail->totalBreakout % 60;
@@ -184,8 +142,12 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    @if($detail->status != 'clockout' && isset($detail->total))
-                                        {{ number_format($detail->total, 2) }}
+                                    @if(isset($detail->status) && $detail->status != 'clockout' && isset($detail->total))
+                                        @php
+                                            $arrTotal = explode(".", number_format($detail->total, 2));
+                                            $dec = isset($arrTotal[1]) ? $arrTotal[1] : 0;
+                                        @endphp
+                                        {{ $arrTotal[0] }}.{{ $dec }}
                                     @else
                                         Still Working...
                                     @endif
@@ -206,29 +168,19 @@
                                         </a>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $detail->editby ?? '' }}
-                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-6 py-4 text-center text-gray-500">No clock in-out records found</td>
+                                <td colspan="10" class="px-6 py-4 text-center text-gray-500">No clock in-out records found</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             @if(count($clockDetails) > 0)
-                <!-- Summary Section with Buttons -->
+                <!-- Summary Section -->
                 <div class="mt-4 p-4 bg-gray-50 border-t border-gray-200">
                     <div class="flex justify-between items-center">
-                        <div>
-                            <a href="{{ route('storeowner.clocktime.generate-week-payslip') }}" 
-                               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm inline-block">
-                                Generate payslip for all employees for week: {{ $weekNumber }}-{{ $year }}
-                            </a>
-                        </div>
-                        
                         <div class="text-right">
                             <span class="font-semibold text-sm">Total Payroll Hour (Numeric):</span>
                             @php
@@ -238,43 +190,6 @@
                             @endphp
                             <span class="text-sm">{{ $hours }}.{{ $minutes }}</span>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- Footer Button -->
-                <div class="flex justify-between mt-4">
-                    <div>
-                        <form action="{{ route('storeowner.clocktime.upload-allemployee-daily-hours') }}" method="POST" id="uploadHoursForm">
-                            @csrf
-                            @foreach($clockDetails as $detail)
-                                <input type="hidden" name="eltid[]" value="{{ $detail->eltid }}">
-                                <input type="hidden" name="employeeid[]" value="{{ $detail->employeeid }}">
-                                <input type="hidden" name="storeid[]" value="{{ $detail->storeid }}">
-                                <input type="hidden" name="weekno[]" value="{{ $weekNumber }}">
-                                <input type="hidden" name="week_start[]" value="{{ \Carbon\Carbon::parse($startDate)->format('Y-m-d') }}">
-                                <input type="hidden" name="week_end[]" value="{{ \Carbon\Carbon::parse($endDate)->format('Y-m-d') }}">
-                                <input type="hidden" name="shiftdate[]" value="{{ \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d') }}">
-                                <input type="hidden" name="shiftday[]" value="{{ $detail->day }}">
-                                <input type="hidden" name="clockins[]" value="{{ $detail->clockin ? \Carbon\Carbon::parse($detail->clockin)->format('Y-m-d H:i') : '' }}">
-                                <input type="hidden" name="clockouts[]" value="{{ ($detail->status != 'clockout' && $detail->clockout) ? \Carbon\Carbon::parse($detail->clockout)->format('Y-m-d H:i') : '' }}">
-                                <input type="hidden" name="break_deducted[]" value="{{ ($detail->status != 'clockout' && isset($detail->totalBreakout)) ? floor($detail->totalBreakout / 60) . ' hr ' . ($detail->totalBreakout % 60) . ' min' : '' }}">
-                                <input type="hidden" name="total_hours[]" value="{{ ($detail->status != 'clockout' && isset($detail->total)) ? number_format($detail->total, 2) : '' }}">
-                            @endforeach
-                            <input type="hidden" name="year" value="{{ $year }}">
-                            <input type="hidden" name="hours_worked" value="{{ number_format($totalPayrol, 2) }}">
-                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
-                                Upload payroll hours for dashboard: {{ $weekNumber }}-{{ $year }}
-                            </button>
-                        </form>
-                    </div>
-                    <div class="mt-4 text-right">
-                        <a href="{{ route('storeowner.clocktime.week-allemp-payroll-hrs', [
-                            'weekid' => $calculatedWeekid,
-                            'date' => \Carbon\Carbon::parse($startDate)->format('Y-m-d')
-                        ]) }}" 
-                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
-                            All employee total payroll hours for week: {{ $weekNumber }}-{{ $year }}
-                        </a>
                     </div>
                 </div>
             @endif
@@ -330,16 +245,11 @@
         </div>
     </div>
 
-    @push('styles')
-    @endpush
-
     @push('scripts')
     <script>
-        // Initialize Flatpickr for Edit Modal (will be reinitialized when modal opens)
         let clockInPicker, clockOutPicker;
 
         function editClockInOutData(eltid) {
-            // Fetch clock in-out data via AJAX
             fetch('{{ route("storeowner.clocktime.edit-clock-inout") }}', {
                 method: 'POST',
                 headers: {
@@ -353,7 +263,6 @@
                 const clockinInput = document.getElementById('clockin');
                 const clockoutInput = document.getElementById('clockout');
                 
-                // Destroy existing pickers if they exist
                 if (clockInPicker) {
                     clockInPicker.destroy();
                 }
@@ -361,12 +270,10 @@
                     clockOutPicker.destroy();
                 }
                 
-                // Set values
                 clockinInput.value = data.clockin || '';
                 clockoutInput.value = data.clockout || '';
                 document.getElementById('eltid').value = eltid;
                 
-                // Initialize Flatpickr for edit modal (datetime format: YYYY-MM-DD HH:MM:SS)
                 clockInPicker = flatpickr('#clockin', {
                     enableTime: true,
                     dateFormat: 'Y-m-d H:i:s',
@@ -381,7 +288,6 @@
                     allowInput: true
                 });
                 
-                // Show modal
                 document.getElementById('editClockInOutModal').classList.remove('hidden');
             })
             .catch(error => {
@@ -392,7 +298,6 @@
         
         function closeEditModal() {
             document.getElementById('editClockInOutModal').classList.add('hidden');
-            // Destroy pickers when closing modal
             if (clockInPicker) {
                 clockInPicker.destroy();
                 clockInPicker = null;
@@ -405,4 +310,3 @@
     </script>
     @endpush
 </x-storeowner-app-layout>
-

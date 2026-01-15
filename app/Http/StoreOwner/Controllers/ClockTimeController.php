@@ -667,6 +667,52 @@ class ClockTimeController extends Controller
     }
 
     /**
+     * Display day clock time for all employees (matching CI's dayclocktime_allemp).
+     */
+    public function dayClockTimeAllEmp($day, $date): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+
+        $storeid = $this->getStoreId();
+        
+        $dateObj = Carbon::parse($date);
+        $weekNumber = (int)$dateObj->format('W');
+        $year = $this->clockTimeService->getIsoYearFromDate($dateObj);
+        $dayName = $dateObj->format('l'); // e.g., "Monday"
+
+        // Get weekid from date
+        $calculatedWeekid = $this->clockTimeService->getWeekId($weekNumber, $year);
+        if (!$calculatedWeekid) {
+            return redirect()->route('storeowner.clocktime.index')
+                ->with('error', 'Week not found for the selected date.');
+        }
+
+        // Get all employee hours by day
+        $result = $this->clockTimeService->getAllEmployeeHrsByDay(
+            $storeid, 
+            $calculatedWeekid, 
+            $dayName, 
+            $date
+        );
+
+        $clockDetails = $result['clockdetails'];
+        $totalPayrol = $result['totalPayrol'];
+
+        return view('storeowner.clocktime.dayclocktime_allemp', compact(
+            'clockDetails', 
+            'totalPayrol', 
+            'date',
+            'dayName',
+            'weekNumber',
+            'year',
+            'calculatedWeekid'
+        ));
+    }
+
+    /**
      * Display yearly hours for a specific employee.
      */
     public function yearlyHrsByEmployee($employeeid): View|\Illuminate\Http\RedirectResponse

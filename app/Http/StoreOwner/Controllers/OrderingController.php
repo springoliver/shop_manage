@@ -217,6 +217,7 @@ class OrderingController extends Controller
         }
         
         $storeid = $this->getStoreId();
+        $user = auth('storeowner')->user();
         $username = $user->username ?? '';
         
         // Handle Order Complete (POST)
@@ -1418,9 +1419,14 @@ class OrderingController extends Controller
                 ->with('error', 'Purchase order not found');
         }
         
-        // Get purchased products for this order
-        $purchasedProducts = PurchasedProduct::with(['product.taxSetting', 'product.purchaseMeasure', 'taxSetting', 'department', 'supplier'])
-            ->where('purchase_orders_id', $purchase_orders_id)
+        // Get purchased products for this order (with joins like CI)
+        // CI uses: join store_products, join purchasemeasures, left join tax_settings on store_products.taxid
+        $purchasedProducts = DB::table('stoma_purchasedproducts as pp')
+            ->select('pp.*', 'sp.product_name', 'ts.tax_name', 'ts.tax_amount', 'pm.purchasemeasure')
+            ->join('stoma_store_products as sp', 'sp.productid', '=', 'pp.productid')
+            ->join('stoma_purchasemeasures as pm', 'pm.purchasemeasuresid', '=', 'pp.purchasemeasuresid')
+            ->leftJoin('stoma_tax_settings as ts', 'ts.taxid', '=', 'sp.taxid')
+            ->where('pp.purchase_orders_id', $purchase_orders_id)
             ->get();
         
         // Get store products for the supplier (for adding new products)
