@@ -1293,11 +1293,80 @@ class ClockTimeController extends Controller
         }
 
         $storeid = $this->getStoreId();
+        $user = auth('storeowner')->user();
+        $username = $user->username ?? '';
 
-        // TODO: Implement upload functionality to save to stoma_emp_payroll_hrs table
-        // This should save the hours to a dashboard/payroll table
-        // For now, redirect back with success message
-        return redirect()->back()->with('success', 'Employee hours uploaded successfully.');
+        // Validate required fields
+        $validated = $request->validate([
+            'employeeid' => 'required|array',
+            'storeid' => 'required|array',
+            'deducted_hour' => 'required|array',
+            'deducted_time' => 'required|array',
+            'hours_worked' => 'required|array',
+            'numberofdaysworked' => 'required|array',
+            'week_start' => 'required|date',
+            'week_end' => 'required|date',
+            'weekno' => 'required|integer',
+            'year' => 'required|integer',
+        ]);
+
+        $employeeids = $validated['employeeid'];
+        $storeids = $validated['storeid'];
+        $deductedHours = $validated['deducted_hour'];
+        $deductedTimes = $validated['deducted_time'];
+        $hoursWorked = $validated['hours_worked'];
+        $numberOfDaysWorked = $validated['numberofdaysworked'];
+        $weekStart = $validated['week_start'];
+        $weekEnd = $validated['week_end'];
+        $weekno = $validated['weekno'];
+        $year = $validated['year'];
+
+        $result = false;
+
+        // Loop through each employee and insert/update payroll hours
+        // Following CI pattern: delete existing record, then insert new one
+        foreach ($employeeids as $key => $employeeid) {
+            // Calculate total hours (hours worked + break time in hours)
+            $totalHours = number_format((float)$hoursWorked[$key] + ((float)$deductedHours[$key] / 60), 2);
+
+            // Format break_deducted time (convert from "H:M" to "H:i:s")
+            // Handle format like "2:30" (hours:minutes) or "02:30:00"
+            $breakDeducted = $deductedTimes[$key];
+            if (strlen($breakDeducted) <= 5) {
+                // Format is "H:M" or "HH:MM", convert to "H:i:s"
+                $breakDeducted = date('H:i:s', strtotime($deductedTimes[$key] . ':00'));
+            }
+
+            // Delete existing record for this employee/week combination (like CI model upload_payrol_hrs)
+            DB::table('stoma_emp_payroll_hrs')
+                ->where('employeeid', $employeeid)
+                ->where('week_start', $weekStart)
+                ->where('week_end', $weekEnd)
+                ->where('weekno', $weekno)
+                ->delete();
+
+            // Insert new record
+            $result = DB::table('stoma_emp_payroll_hrs')->insert([
+                'employeeid' => $employeeid,
+                'storeid' => $storeids[$key],
+                'week_start' => $weekStart,
+                'week_end' => $weekEnd,
+                'weekno' => $weekno,
+                'year' => $year,
+                'hours_worked' => $hoursWorked[$key],
+                'numberofdaysworked' => $numberOfDaysWorked[$key],
+                'break_deducted' => $breakDeducted,
+                'total_hours' => $totalHours,
+                'insertip' => $username,
+                'insertdate' => now(),
+            ]);
+        }
+
+        if ($result) {
+            return redirect()->back()->with('success', 'Employee hours uploaded successfully.');
+        } else {
+            return redirect()->back()->with('error', 'Employee hours not uploaded.');
+        }
     }
 
     /**
