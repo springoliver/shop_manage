@@ -852,26 +852,67 @@ class RosterController extends Controller
     /**
      * Email roster to all employees.
      */
-    public function emailRoster(): RedirectResponse
+    public function emailRoster(Request $request): RedirectResponse
     {
         $moduleCheck = $this->checkModuleAccess();
         if ($moduleCheck) {
             return $moduleCheck;
         }
         
+        // Increase execution time limit to prevent timeout
+        @set_time_limit(300); // 5 minutes - suppress errors if disabled
+        @ini_set('max_execution_time', 300);
+        
         $storeid = $this->getStoreId();
         
-        $date = date('Y-m-d');
-        $weeknumber = (int) date('W');
-        $year = (int) date('Y');
+        // Get week from request parameters or use current week
+        $weekid = $request->input('weekid');
+        $selectedDate = $request->input('date');
         
-        $yearModel = Year::where('year', $year)->first();
-        if ($yearModel) {
-            $week = Week::where('weeknumber', $weeknumber)
-                ->where('yearid', $yearModel->yearid)
-                ->first();
-        } else {
-            $week = null;
+        $week = null;
+        $weeknumber = null;
+        $year = null;
+        
+        if ($weekid) {
+            // Use provided weekid
+            $week = Week::find($weekid);
+            if ($week) {
+                $yearModel = Year::find($week->yearid);
+                $weeknumber = $week->weeknumber;
+                $year = $yearModel ? $yearModel->year : date('Y');
+            }
+        } elseif ($selectedDate) {
+            // Calculate week from selected date
+            try {
+                $dateObj = \Carbon\Carbon::parse($selectedDate);
+                $weeknumber = (int) $dateObj->format('W');
+                $year = (int) $dateObj->format('Y');
+                
+                $yearModel = Year::where('year', $year)->first();
+                if ($yearModel) {
+                    $week = Week::where('weeknumber', $weeknumber)
+                        ->where('yearid', $yearModel->yearid)
+                        ->first();
+                }
+            } catch (\Exception $e) {
+                \Log::error('Invalid date format for email roster: ' . $selectedDate);
+            }
+        }
+        
+        // Fallback to current week if no week specified
+        if (!$week) {
+            $date = date('Y-m-d');
+            $weeknumber = (int) date('W');
+            $year = (int) date('Y');
+            
+            $yearModel = Year::where('year', $year)->first();
+            if ($yearModel) {
+                $week = Week::where('weeknumber', $weeknumber)
+                    ->where('yearid', $yearModel->yearid)
+                    ->first();
+            } else {
+                $week = null;
+            }
         }
         
         if (!$week) {
@@ -897,33 +938,163 @@ class RosterController extends Controller
         $siteName = $store->storename ?? config('app.name');
         $siteEmail = $store->store_email ?? config('mail.from.address');
         
+        // Verify mail configuration before attempting to send
+        $mailHost = config('mail.mailers.smtp.host');
+        $mailPort = config('mail.mailers.smtp.port');
+        $mailUsername = config('mail.mailers.smtp.username');
+        $mailPassword = config('mail.mailers.smtp.password');
+        $mailEncryption = config('mail.mailers.smtp.encryption');
+        
+        \Log::info('Mail Configuration Check', [
+            'driver' => config('mail.default'),
+            'host' => $mailHost,
+            'port' => $mailPort,
+            'username' => $mailUsername ? '***' : 'NOT SET',
+            'password' => $mailPassword ? '***' : 'NOT SET',
+            'encryption' => $mailEncryption,
+        ]);
+        
+        if (empty($mailHost) || empty($mailUsername) || empty($mailPassword)) {
+            return redirect()->route('storeowner.roster.weekroster')
+                ->with('error', 'Mail configuration is incomplete. Please check MAIL_HOST, MAIL_USERNAME, and MAIL_PASSWORD in your .env file.');
+        }
+        
+        // Calculate week dates for the selected week
+        $weekDates = $this->rosterService->calculateWeekDates($year, $weeknumber);
+        
+        $sentCount = 0;
+        $errorCount = 0;
+        $errorMessages = [];
+        $startTime = time();
+        $maxExecutionTime = 50; // Leave 10 seconds buffer before PHP's 60 second limit
+        
+        // Track sent emails to prevent duplicates
+        $sentEmails = [];
+        
         // Send email to each employee
         foreach ($rostersByEmployee as $employeeId => $rosters) {
+            // Check if we're approaching the execution time limit
+            if ((time() - $startTime) > $maxExecutionTime) {
+                \Log::warning('Email sending stopped due to approaching execution time limit. Sent: ' . $sentCount . ', Failed: ' . $errorCount);
+                break;
+            }
+            
             $employee = StoreEmployee::find($employeeId);
             
             if (!$employee || !$employee->emailid) {
                 continue;
             }
             
+            // Prevent duplicate emails
+            if (in_array($employee->emailid, $sentEmails)) {
+                \Log::warning('Skipping duplicate email for employee: ' . $employee->emailid);
+                continue;
+            }
+            
             try {
+                // Set socket timeout for this specific email - use shorter timeout
+                $originalTimeout = ini_get('default_socket_timeout');
+                ini_set('default_socket_timeout', 10); // 10 second timeout per email
+                
+                // Order rosters by day (Sunday to Saturday) to match CI's expected format
+                $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                $orderedRosters = [];
+                
+                foreach ($dayOrder as $index => $day) {
+                    $rosterForDay = $rosters->firstWhere('day', $day);
+                    if ($rosterForDay) {
+                        // Ensure day_date is set correctly based on calculated week dates
+                        $rosterForDay->day_date = $weekDates[$day] ?? $rosterForDay->day_date;
+                        $orderedRosters[$index] = $rosterForDay;
+                    } else {
+                        // Create empty roster entry for missing days
+                        $orderedRosters[$index] = (object) [
+                            'day' => $day,
+                            'day_date' => $weekDates[$day] ?? null,
+                            'start_time' => '00:00:00',
+                            'end_time' => '00:00:00',
+                            'work_status' => 'off',
+                            'break_every_hrs' => 0,
+                            'break_min' => 0,
+                        ];
+                    }
+                }
+                
                 \Illuminate\Support\Facades\Mail::send('storeowner.roster.email_roster', [
                     'employee' => $employee,
-                    'my_roster' => $rosters,
+                    'my_roster' => collect($orderedRosters),
                     'weeknumber' => $weeknumber,
                     'year' => $year,
                     'sitename' => $siteName,
                 ], function($message) use ($employee, $siteEmail, $siteName) {
-                    $message->to($employee->emailid, $employee->firstname . ' ' . $employee->lastname)
+                    $message->from($siteEmail, $siteName)
+                        ->to($employee->emailid, $employee->firstname . ' ' . $employee->lastname)
                         ->subject('Your Weekly Roster - ' . $siteName);
                 });
-            } catch (\Exception $e) {
-                // Log error but continue sending to other employees
-                \Log::error('Failed to send roster email to employee ' . $employeeId . ': ' . $e->getMessage());
+                
+                // Restore original timeout
+                ini_set('default_socket_timeout', $originalTimeout);
+                $sentCount++;
+                $sentEmails[] = $employee->emailid; // Track sent email
+                \Log::info('Email sent successfully to: ' . $employee->emailid);
+                
+            } catch (\Throwable $e) {
+                // Restore original timeout
+                ini_set('default_socket_timeout', $originalTimeout ?? 60);
+                
+                // Capture error details
+                $errorMsg = $e->getMessage();
+                $errorMessages[] = $errorMsg;
+                
+                // Log detailed error
+                \Log::error('Failed to send roster email to employee ' . $employeeId . ' (' . ($employee->emailid ?? 'no email') . ')', [
+                    'error' => $errorMsg,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                
+                $errorCount++;
+                
+                // If it's a timeout or connection error, skip remaining emails
+                if (strpos(strtolower($errorMsg), 'timeout') !== false || 
+                    strpos(strtolower($errorMsg), 'connection') !== false ||
+                    strpos(strtolower($errorMsg), 'maximum execution time') !== false ||
+                    strpos(strtolower($errorMsg), 'stream_socket_client') !== false) {
+                    \Log::error('Stopping email sending due to timeout/connection error: ' . $errorMsg);
+                    break;
+                }
             }
         }
         
+        // Return appropriate message based on results
+        $message = 'Roster emailed to all employees successfully.';
+        if ($sentCount > 0 && $errorCount > 0) {
+            $message = "Roster emailed to {$sentCount} employee(s). {$errorCount} email(s) failed to send.";
+        } elseif ($sentCount == 0) {
+            $lastError = !empty($errorMessages) ? ' Last error: ' . $errorMessages[0] : '';
+            
+            // Detect if SMTP is completely blocked (both ports timing out)
+            $isTimeoutError = strpos(strtolower($lastError), 'timeout') !== false || 
+                             strpos(strtolower($lastError), 'connection') !== false ||
+                             strpos(strtolower($lastError), 'handshake') !== false;
+            
+            if ($isTimeoutError) {
+                // SMTP is blocked - provide comprehensive solution
+                $message = 'SMTP connection is blocked by your firewall/network. Both ports (587 and 465) are timing out. ';
+                $message .= 'Solutions: 1) Check Windows Firewall and allow ports 587/465, 2) Disable antivirus email protection temporarily, ';
+                $message .= '3) Use an API-based mail service (Mailgun/SendGrid) instead of SMTP, or ';
+                $message .= '4) Contact your network administrator to unblock SMTP ports.';
+                $message .= ' Error details: ' . $lastError;
+            } else {
+                $message = 'No emails were sent. Please check your mail configuration (SMTP settings in .env) and ensure the SMTP server is reachable.' . $lastError;
+            }
+            
+            \Log::error('All emails failed to send', ['errors' => $errorMessages]);
+        }
+        
         return redirect()->route('storeowner.roster.weekroster')
-            ->with('success', 'Roster emailed to all employees successfully.');
+            ->with($sentCount > 0 ? 'success' : 'error', $message);
     }
 }
 

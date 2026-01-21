@@ -21,7 +21,7 @@
             </thead>
             <tbody>
                 @php
-                    $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                     $my_roster_array = $my_roster->values()->all();
                 @endphp
                 @for($i = 0; $i < 7; $i++)

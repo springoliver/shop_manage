@@ -30,6 +30,16 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-semibold text-gray-800">Add Week Roster</h1>
+        <div class="flex items-center space-x-3">
+            <a href="#" id="emailRosterBtn" class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 flex items-center" title="Email Roster">
+                <i class="fas fa-envelope mr-2"></i>
+                Email Roster
+            </a>
+            <span class="text-gray-400">-</span>
+            <button type="submit" form="rosterForm" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700" title="Save">
+                Save
+            </button>
+        </div>
     </div>
 
     <!-- Success/Error Messages -->
@@ -50,7 +60,7 @@
     <!-- Form -->
     <div class="bg-white rounded-lg shadow">
         <div class="p-6">
-            <form action="{{ route('storeowner.roster.weekrosteradd') }}" method="POST">
+            <form id="rosterForm" action="{{ route('storeowner.roster.weekrosteradd') }}" method="POST">
                 @csrf
                 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -119,25 +129,22 @@
                         </tbody>
                     </table>
                 </div>
-
-                <div class="mt-6 flex justify-end space-x-3">
-                    <a href="{{ route('storeowner.roster.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                        Cancel
-                    </a>
-                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
-                        Save
-                    </button>
-                </div>
             </form>
         </div>
     </div>
 
     @push('scripts')
     <script>
+        let selectedWeekDate = null;
+        
         document.getElementById('weeknumber').addEventListener('change', function() {
             const dateValue = this.value;
-            if (!dateValue) return;
+            if (!dateValue) {
+                selectedWeekDate = null;
+                return;
+            }
 
+            selectedWeekDate = dateValue;
             const date = new Date(dateValue);
             const year = date.getFullYear();
             
@@ -166,6 +173,18 @@
             const year = date.getFullYear();
             return `${day}-${month}-${year}`;
         }
+        
+        // Handle Email Roster button click
+        document.getElementById('emailRosterBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            let emailUrl = '{{ route("storeowner.roster.email") }}';
+            
+            if (selectedWeekDate) {
+                emailUrl += '?date=' + encodeURIComponent(selectedWeekDate);
+            }
+            
+            window.location.href = emailUrl;
+        });
     </script>
     @endpush
 </x-storeowner-app-layout>

@@ -63,15 +63,20 @@ class RosterService
     {
         $dates = [];
         
-        // Create a date for the first day of the week (Monday)
-        $date = Carbon::now()
-            ->setISODate((int) $year, $weekNumber, 1)
-            ->startOfWeek();
+        // Create a date for Monday of the ISO week
+        $mondayDate = Carbon::now()
+            ->setISODate((int) $year, $weekNumber, 1); // ISO week starts on Monday
         
-        for ($day = 0; $day < 7; $day++) {
-            $currentDate = $date->copy()->addDays($day);
-            $dayName = $currentDate->format('l');
+        // Calculate Sunday (day before Monday) for the week
+        $sundayDate = $mondayDate->copy()->subDay();
+        
+        // Build dates array from Sunday to Saturday
+        $dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $currentDate = $sundayDate->copy();
+        
+        foreach ($dayOrder as $dayName) {
             $dates[$dayName] = $currentDate->format('Y-m-d');
+            $currentDate->addDay();
         }
         
         return $dates;
@@ -162,6 +167,18 @@ class RosterService
      */
     public function getAllRosters(int $storeid)
     {
+        // Order by day to match CI behavior (Sunday=0, Monday=1, etc.)
+        $dayOrder = "CASE 
+            WHEN day = 'Sunday' THEN 0
+            WHEN day = 'Monday' THEN 1
+            WHEN day = 'Tuesday' THEN 2
+            WHEN day = 'Wednesday' THEN 3
+            WHEN day = 'Thursday' THEN 4
+            WHEN day = 'Friday' THEN 5
+            WHEN day = 'Saturday' THEN 6
+            ELSE 99
+        END";
+        
         return Roster::where('storeid', $storeid)
             ->with(['employee' => function ($query) {
                 $query->where('status', '!=', 'Deactivate');
@@ -169,6 +186,7 @@ class RosterService
             ->whereHas('employee', function ($query) {
                 $query->where('status', '!=', 'Deactivate');
             })
+            ->orderByRaw($dayOrder)
             ->get();
     }
 
